@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,8 +53,8 @@ export default function AnalyzePage() {
   const [serumCreatinine, setSerumCreatinine] = useState("");
   const [bodyWeight, setBodyWeight] = useState("");
   const [prescriptionText, setPrescriptionText] = useState("");
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [inputType, setInputType] = useState<"text" | "image">("text");
   const [selectedModel, setSelectedModel] = useState<GeminiModel>("gemini-2.5-flash");
 
@@ -79,20 +79,49 @@ export default function AnalyzePage() {
   const [error, setError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
+  const addImageFiles = useCallback((files: File[]) => {
+    const valid = files.filter((f) =>
+      ["image/jpeg", "image/png", "image/webp"].includes(f.type)
+    );
+    if (valid.length === 0) return;
+    setImageFiles((prev) => [...prev, ...valid]);
+    valid.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) =>
+        setImagePreviews((prev) => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(file);
+    });
+  }, []);
+
+  const removeImage = (index: number) => {
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    addImageFiles(files);
+    e.target.value = "";
+  };
+
+  useEffect(() => {
+    if (inputType !== "image") return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const files = Array.from(e.clipboardData?.items ?? [])
+        .filter((item) => item.type.startsWith("image/"))
+        .map((item) => item.getAsFile())
+        .filter((f): f is File => f !== null);
+      if (files.length > 0) addImageFiles(files);
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [inputType, addImageFiles]);
 
   // Step 1: AI解析（DB保存なし）
   const handleAnalyze = async () => {
     if (!ageGroup) { setError("年齢層を選択してください"); return; }
     if (inputType === "text" && !prescriptionText.trim()) { setError("処方情報を入力してください"); return; }
-    if (inputType === "image" && !imageFile) { setError("画像を選択してください"); return; }
+    if (inputType === "image" && imageFiles.length === 0) { setError("画像を選択してください"); return; }
     setError("");
     setIsAnalyzing(true);
 
@@ -110,8 +139,11 @@ export default function AnalyzePage() {
       if (inputType === "text") {
         result = await analyzeOnlyText({ prescriptionText: prescriptionText.trim(), model: selectedModel, renalData });
       } else {
-        const base64 = imagePreview!.split(",")[1];
-        result = await analyzeOnlyImage({ imageBase64: base64, mimeType: imageFile!.type, model: selectedModel, renalData });
+        const images = imagePreviews.map((preview, i) => ({
+          imageBase64: preview.split(",")[1],
+          mimeType: imageFiles[i].type,
+        }));
+        result = await analyzeOnlyImage({ images, model: selectedModel, renalData });
       }
       setAnalysisResult(result);
       setPhase("result");
@@ -291,32 +323,54 @@ export default function AnalyzePage() {
               <TabsContent value="image" className="space-y-3">
                 <Alert>
                   <AlertDescription className="text-xs text-gray-600">
-                    お薬手帳・処方箋の写真をアップロードしてください。AIがOCRで読み取り解析します。
+                    お薬手帳・処方箋の写真をアップロードしてください。複数枚まとめて解析できます。
                     <strong className="block mt-1">個人情報（氏名・生年月日）が写り込んでいても、AIは無視して処理します。</strong>
                   </AlertDescription>
                 </Alert>
+
+                {imagePreviews.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {imagePreviews.map((preview, i) => (
+                      <div key={i} className="relative group border rounded-lg overflow-hidden bg-gray-50">
+                        <img
+                          src={preview}
+                          alt={`preview-${i + 1}`}
+                          className="w-full max-h-48 object-contain"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(i)}
+                          className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none"
+                        >
+                          ×
+                        </button>
+                        <p className="text-xs text-gray-400 px-2 py-1 truncate">{imageFiles[i]?.name ?? `画像 ${i + 1}`}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 <div
-                  className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                  className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
                   onClick={() => fileInputRef.current?.click()}
                 >
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="preview" className="max-h-64 mx-auto rounded" />
-                  ) : (
-                    <div className="text-gray-400">
-                      <p className="text-4xl mb-2">📷</p>
-                      <p>クリックして画像を選択</p>
-                      <p className="text-xs mt-1">JPG, PNG, WebP 対応</p>
-                    </div>
-                  )}
+                  <div className="text-gray-400">
+                    <p className="text-3xl mb-1">📷</p>
+                    <p className="text-sm">
+                      {imagePreviews.length > 0 ? "クリックしてさらに追加" : "クリックまたはペーストで画像を追加"}
+                    </p>
+                    <p className="text-xs mt-1">JPG · PNG · WebP · Ctrl+V でペースト可 · 複数枚OK</p>
+                  </div>
                 </div>
+
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
+                  multiple
                   className="hidden"
                   onChange={handleImageChange}
                 />
-                {imageFile && <p className="text-sm text-gray-500">{imageFile.name}</p>}
               </TabsContent>
             </Tabs>
 

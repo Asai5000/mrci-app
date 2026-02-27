@@ -17,12 +17,15 @@ export async function analyzeOnlyText(input: {
 }
 
 export async function analyzeOnlyImage(input: {
-  imageBase64: string;
-  mimeType: string;
+  images: Array<{ imageBase64: string; mimeType: string }>;
   model?: GeminiModel;
   renalData?: RenalData;
 }): Promise<GeminiAnalysisResult> {
-  return analyzePrescriptionImage(input.imageBase64, input.mimeType, input.model ?? "gemini-2.5-flash", input.renalData);
+  return analyzePrescriptionImage(
+    input.images.map((img) => ({ base64: img.imageBase64, mimeType: img.mimeType })),
+    input.model ?? "gemini-2.5-flash",
+    input.renalData
+  );
 }
 
 // ── 症例をDBに保存（登録ボタン押下時） ───────────────────────────

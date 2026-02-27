@@ -181,8 +181,7 @@ export async function analyzePrescription(
 }
 
 export async function analyzePrescriptionImage(
-  imageBase64: string,
-  mimeType: string,
+  images: Array<{ base64: string; mimeType: string }>,
   modelId: GeminiModel = "gemini-2.5-flash",
   renalData?: RenalData
 ): Promise<GeminiAnalysisResult> {
@@ -195,12 +194,13 @@ export async function analyzePrescriptionImage(
   });
 
   const renalSection = renalData ? buildRenalPromptSection(renalData) : "";
-  const prompt = `${MRCI_SYSTEM_PROMPT}${renalSection}\n\n【指示】\n添付の画像（お薬手帳・処方箋・薬剤一覧）から持参薬情報を読み取り、上記ルールに従って解析してください。個人を特定できる情報（氏名・生年月日・住所等）は無視してください。`;
+  const imageNote = images.length > 1 ? `（${images.length}枚の画像を統合して解析）` : "";
+  const prompt = `${MRCI_SYSTEM_PROMPT}${renalSection}\n\n【指示】\n添付の画像${imageNote}（お薬手帳・処方箋・薬剤一覧）から持参薬情報を読み取り、上記ルールに従って解析してください。複数枚ある場合は全画像の薬剤を統合してください。個人を特定できる情報（氏名・生年月日・住所等）は無視してください。`;
 
   try {
     const result = await model.generateContent([
       { text: prompt },
-      { inlineData: { mimeType, data: imageBase64 } },
+      ...images.map((img) => ({ inlineData: { mimeType: img.mimeType, data: img.base64 } })),
     ]);
     const text = result.response.text();
     try {
