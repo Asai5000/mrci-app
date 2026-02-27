@@ -192,7 +192,7 @@ export default function AnalyzePage() {
         <Card>
           <CardHeader><CardTitle className="text-base">患者属性（匿名化情報）</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
                 <Label>年齢層 <span className="text-red-500">*</span></Label>
                 <Select value={ageGroup} onValueChange={setAgeGroup}>
@@ -217,8 +217,8 @@ export default function AnalyzePage() {
             <div className="border-t pt-3">
               <p className="text-xs text-gray-500 mb-2">腎機能計算（任意 — 入力すると腎機能考慮の提案が追加されます）</p>
               <div className="space-y-2">
-                <div className="flex items-end gap-4">
-                  <div className="w-40 space-y-1">
+                <div className="flex flex-wrap items-end gap-3">
+                  <div className="space-y-1 min-w-[130px] flex-1 sm:flex-none sm:w-40">
                     <Label className="text-xs">血清Cr (mg/dL)</Label>
                     <Input
                       type="number"
@@ -229,8 +229,8 @@ export default function AnalyzePage() {
                       onChange={(e) => setSerumCreatinine(e.target.value)}
                     />
                   </div>
-                  <div className="w-40 space-y-1">
-                    <Label className="text-xs">体重 (kg) <span className="text-gray-400">CrCl計算用</span></Label>
+                  <div className="space-y-1 min-w-[130px] flex-1 sm:flex-none sm:w-40">
+                    <Label className="text-xs">体重 (kg) <span className="text-gray-400">CrCl用</span></Label>
                     <Input
                       type="number"
                       step="0.1"
@@ -241,7 +241,7 @@ export default function AnalyzePage() {
                     />
                   </div>
                 </div>
-                <div className="flex items-center gap-6 text-sm min-h-[1.5rem]">
+                <div className="flex flex-wrap items-center gap-4 text-sm min-h-[1.5rem]">
                   {calcEgfr != null && (
                     <span className="text-gray-700">
                       eGFR: <strong className="text-blue-600">{calcEgfr}</strong>{" "}
@@ -262,7 +262,7 @@ export default function AnalyzePage() {
         </Card>
 
         {/* モデル選択 */}
-        <div className="flex items-center gap-3 p-3 bg-white border rounded-lg">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-3 bg-white border rounded-lg">
           <span className="text-sm font-medium text-gray-700">AIモデル:</span>
           <div className="flex gap-2">
             {(
@@ -406,16 +406,16 @@ export default function AnalyzePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* ヘッダー */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">解析結果の確認</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">解析結果の確認</h1>
           <p className="text-sm text-gray-500 mt-1">
             {ageGroup}{gender ? ` · ${gender}` : ""}
             {calcEgfr != null && ` · eGFR: ${calcEgfr} (${getCKDStageLabel(calcEgfr)})`}
             {calcCrcl != null && ` · CrCl: ${calcCrcl} mL/min`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <Button variant="outline" size="sm" onClick={() => { setPhase("input"); setAnalysisResult(null); }}>
             ← 入力に戻る
           </Button>
@@ -430,29 +430,29 @@ export default function AnalyzePage() {
       </Alert>
 
       {/* MRCIサマリー */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section A（剤形）</p>
-            <p className="text-2xl font-bold text-gray-700">{result.mrci_summary.section_a_total.toFixed(1)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">{result.mrci_summary.section_a_total.toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section B（頻度）</p>
-            <p className="text-2xl font-bold text-gray-700">{result.mrci_summary.section_b_total.toFixed(1)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">{result.mrci_summary.section_b_total.toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section C（特別指示）</p>
-            <p className="text-2xl font-bold text-gray-700">{result.mrci_summary.section_c_total.toFixed(1)}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">{result.mrci_summary.section_c_total.toFixed(1)}</p>
           </CardContent>
         </Card>
         <Card className="border-2 border-blue-200">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">合計MRCI</p>
-            <p className="text-3xl font-bold text-blue-600">{result.mrci_summary.total.toFixed(1)}</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{result.mrci_summary.total.toFixed(1)}</p>
             <Badge variant={level.level === "high" ? "destructive" : level.level === "medium" ? "secondary" : "outline"} className="mt-1">
               複雑度: {level.label}
             </Badge>
@@ -466,8 +466,8 @@ export default function AnalyzePage() {
           <CardTitle className="text-base">抽出された薬剤一覧（{result.extracted_medications.length}剤）</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-full text-sm min-w-[540px]">
               <thead>
                 <tr className="border-b text-gray-500 text-left">
                   <th className="pb-2 pr-3 font-medium">薬剤名</th>
@@ -550,18 +550,18 @@ export default function AnalyzePage() {
       {/* 登録ボタン */}
       <Card className="border-2 border-blue-200 bg-blue-50">
         <CardContent className="pt-6">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <div>
               <p className="font-medium text-gray-900">この結果を症例として登録しますか？</p>
               <p className="text-sm text-gray-500 mt-0.5">
-                登録後は詳細ページで薬剤の継続/中止を選択し、承認・カルテ転記が行えます
+                登録後は詳細ページで薬剤の継続/中止を選択し、カルテ転記が行えます
               </p>
             </div>
             <div className="flex gap-2 shrink-0">
               <Button variant="outline" onClick={() => { setPhase("input"); setAnalysisResult(null); }}>
                 やり直す
               </Button>
-              <Button onClick={handleSave} disabled={isSaving} className="px-6">
+              <Button onClick={handleSave} disabled={isSaving} className="flex-1 sm:flex-none px-6">
                 {isSaving ? "登録中..." : "症例として登録"}
               </Button>
             </div>

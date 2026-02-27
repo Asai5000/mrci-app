@@ -98,10 +98,10 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
   return (
     <div className="space-y-6">
       {/* ヘッダー */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-gray-900">鑑別結果レビュー</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">鑑別結果レビュー</h1>
             <Badge variant={caseData.status === "approved" ? "default" : "outline"}>
               {caseData.status === "approved" ? "登録済" : "下書き"}
             </Badge>
@@ -112,7 +112,7 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
             {caseData.renalFunction ? ` · 腎機能: ${caseData.renalFunction}` : ""}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap shrink-0">
           {confirmDelete ? (
             <>
               <span className="text-sm text-gray-500 self-center">本当に削除しますか？</span>
@@ -158,35 +158,35 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
       </div>
 
       {/* MRCIサマリー */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section A（剤形）</p>
-            <p className="text-2xl font-bold text-gray-700">
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">
               {caseData.mrciSectionA?.toFixed(1) ?? "-"}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section B（頻度）</p>
-            <p className="text-2xl font-bold text-gray-700">
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">
               {caseData.mrciSectionB?.toFixed(1) ?? "-"}
             </p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">Section C（特別指示）</p>
-            <p className="text-2xl font-bold text-gray-700">
+            <p className="text-xl sm:text-2xl font-bold text-gray-700">
               {caseData.mrciSectionC?.toFixed(1) ?? "-"}
             </p>
           </CardContent>
         </Card>
         <Card className="border-2 border-blue-200">
-          <CardContent className="pt-6">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6">
             <p className="text-xs text-gray-500">合計MRCI</p>
-            <p className="text-3xl font-bold text-blue-600">
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">
               {originalMrci.toFixed(1)}
             </p>
             <Badge
@@ -216,8 +216,8 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="w-full text-sm min-w-[680px]">
               <thead>
                 <tr className="border-b text-gray-500 text-left">
                   <th className="pb-2 w-8"></th>
@@ -306,9 +306,9 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
 
           {/* 最適化後MRCI */}
           <div className="mt-4 p-4 bg-green-50 rounded-lg border border-green-200">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <span className="text-sm font-medium text-green-800">最適化後 MRCI</span>
-              <span className="text-2xl font-bold text-green-700">
+              <span className="text-xl sm:text-2xl font-bold text-green-700">
                 {currentMrci.toFixed(1)}
                 {reduction > 0 && (
                   <span className="text-sm ml-2 text-green-600">
@@ -398,7 +398,7 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
       {showSummary && savedSummary && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base flex items-center justify-between">
+            <CardTitle className="text-base flex items-center justify-between flex-wrap gap-2">
               <span>カルテ転記用サマリー</span>
               <Button variant="outline" size="sm" onClick={handleCopySummary}>
                 コピー

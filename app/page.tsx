@@ -29,39 +29,39 @@ export default async function HomePage() {
   return (
     <div className="space-y-6">
       {/* サマリーカード */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4">
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">総症例数</p>
-            <p className="text-3xl font-bold text-gray-900">{allCases.length}</p>
-            <p className="text-xs text-gray-400 mt-1">承認済: {approvedCases.length}件</p>
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4">
+            <p className="text-xs text-gray-500">総症例数</p>
+            <p className="text-2xl sm:text-3xl font-bold text-gray-900">{allCases.length}</p>
+            <p className="text-xs text-gray-400 mt-1 hidden sm:block">承認済: {approvedCases.length}件</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">平均MRCIスコア</p>
-            <p className="text-3xl font-bold text-blue-600">{avgMrci.toFixed(1)}</p>
-            <p className="text-xs text-gray-400 mt-1">承認済症例の平均</p>
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4">
+            <p className="text-xs text-gray-500">平均MRCI</p>
+            <p className="text-2xl sm:text-3xl font-bold text-blue-600">{avgMrci.toFixed(1)}</p>
+            <p className="text-xs text-gray-400 mt-1 hidden sm:block">承認済症例の平均</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">平均MRCI削減効果</p>
-            <p className="text-3xl font-bold text-green-600">
+          <CardContent className="pt-4 sm:pt-6 px-3 sm:px-6 pb-4">
+            <p className="text-xs text-gray-500">平均削減効果</p>
+            <p className="text-2xl sm:text-3xl font-bold text-green-600">
               {avgReduction > 0 ? "-" : ""}
               {avgReduction.toFixed(1)}
             </p>
-            <p className="text-xs text-gray-400 mt-1">最適化による改善</p>
+            <p className="text-xs text-gray-400 mt-1 hidden sm:block">最適化による改善</p>
           </CardContent>
         </Card>
       </div>
 
       {/* 症例一覧 */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
           <CardTitle>症例一覧</CardTitle>
           <Link href="/analyze">
-            <Button>新規鑑別を開始</Button>
+            <Button size="sm">新規鑑別を開始</Button>
           </Link>
         </CardHeader>
         <CardContent>
@@ -74,16 +74,16 @@ export default async function HomePage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <table className="w-full text-sm min-w-[560px]">
                 <thead>
                   <tr className="border-b text-gray-500 text-left">
-                    <th className="pb-2 pr-4 font-medium">日時</th>
-                    <th className="pb-2 pr-4 font-medium">患者属性</th>
-                    <th className="pb-2 pr-4 font-medium">MRCI</th>
-                    <th className="pb-2 pr-4 font-medium">最適化後</th>
-                    <th className="pb-2 pr-4 font-medium">複雑度</th>
-                    <th className="pb-2 pr-4 font-medium">状態</th>
+                    <th className="pb-2 pr-3 font-medium">日時</th>
+                    <th className="pb-2 pr-3 font-medium">患者属性</th>
+                    <th className="pb-2 pr-3 font-medium">MRCI</th>
+                    <th className="pb-2 pr-3 font-medium">最適化後</th>
+                    <th className="pb-2 pr-3 font-medium">複雑度</th>
+                    <th className="pb-2 pr-3 font-medium">状態</th>
                     <th className="pb-2 font-medium"></th>
                   </tr>
                 </thead>
@@ -96,7 +96,7 @@ export default async function HomePage() {
 
                     return (
                       <tr key={c.id} className="border-b hover:bg-gray-50 transition-colors">
-                        <td className="py-3 pr-4 text-gray-600">
+                        <td className="py-3 pr-3 text-gray-600 whitespace-nowrap">
                           {date.toLocaleDateString("ja-JP", {
                             month: "numeric",
                             day: "numeric",
@@ -104,14 +104,14 @@ export default async function HomePage() {
                             minute: "2-digit",
                           })}
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-3 pr-3 whitespace-nowrap">
                           {c.patientAgeGroup}
                           {c.patientGender ? ` · ${c.patientGender}` : ""}
                         </td>
-                        <td className="py-3 pr-4 font-mono font-semibold">
+                        <td className="py-3 pr-3 font-mono font-semibold whitespace-nowrap">
                           {c.mrciTotal?.toFixed(1) ?? "-"}
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-3 pr-3 whitespace-nowrap">
                           {c.mrciTotalOptimized != null ? (
                             <span className="text-green-600 font-mono">
                               {c.mrciTotalOptimized.toFixed(1)}
@@ -123,7 +123,7 @@ export default async function HomePage() {
                             "-"
                           )}
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-3 pr-3">
                           <Badge
                             variant={
                               level.level === "high"
@@ -136,13 +136,13 @@ export default async function HomePage() {
                             {level.label}
                           </Badge>
                         </td>
-                        <td className="py-3 pr-4">
+                        <td className="py-3 pr-3">
                           <Badge variant={c.status === "approved" ? "default" : "outline"}>
-                            {c.status === "approved" ? "承認済" : "下書き"}
+                            {c.status === "approved" ? "登録済" : "下書き"}
                           </Badge>
                         </td>
                         <td className="py-3">
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 whitespace-nowrap">
                             <Link href={`/cases/${c.id}`}>
                               <Button variant="ghost" size="sm">詳細</Button>
                             </Link>
