@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:init": "tsx scripts/init-db.ts",
+    "db:import-renal": "python3 scripts/import-renal.py",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

@@ -11,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { approveCase } from "@/actions/analyze";
+import { approveCase, generatePharmacistSummary } from "@/actions/analyze";
 import { deleteCase } from "@/actions/cases";
 import { getMRCILevel } from "@/lib/mrci";
 import { toast } from "sonner";
 import type { Case, Medication } from "@/lib/schema";
-import type { GeminiAnalysisResult, OptimizationSuggestion } from "@/lib/gemini";
+import type { GeminiAnalysisResult, GeminiModel, OptimizationSuggestion } from "@/lib/gemini";
 
 interface Props {
   caseData: Case & { medications: Medication[] };
@@ -51,6 +51,22 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
   const [showSummary, setShowSummary] = useState(!!caseData.clinicalSummary);
   const [savedSummary, setSavedSummary] = useState(caseData.clinicalSummary ?? "");
 
+  // AI要約用
+  const [selectedSuggestionIndices, setSelectedSuggestionIndices] = useState<Set<number>>(
+    new Set(geminiResult?.optimization_suggestions.map((_, i) => i) ?? [])
+  );
+  const [summaryModel, setSummaryModel] = useState<GeminiModel>("gemini-2.5-flash");
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const toggleSuggestion = (i: number) => {
+    setSelectedSuggestionIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  };
+
   const toggleContinued = (id: string) => {
     setContinuedIds((prev) => {
       const next = new Set(prev);
@@ -69,6 +85,38 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
   const reduction = originalMrci - currentMrci;
   const reductionPct = originalMrci > 0 ? (reduction / originalMrci) * 100 : 0;
   const level = getMRCILevel(currentMrci);
+
+  const handleGenerateSummary = async () => {
+    setIsGenerating(true);
+    try {
+      const selectedSugs =
+        geminiResult?.optimization_suggestions.filter((_, i) =>
+          selectedSuggestionIndices.has(i)
+        ) ?? [];
+      const patientInfo = [
+        caseData.patientAgeGroup,
+        caseData.patientGender,
+        caseData.renalFunction ? `腎機能: ${caseData.renalFunction}` : null,
+        caseData.calculatedCrcl != null ? `CrCl: ${caseData.calculatedCrcl} mL/min` : null,
+        caseData.calculatedEgfr != null ? `eGFR: ${caseData.calculatedEgfr} mL/min/1.73m²` : null,
+      ]
+        .filter(Boolean)
+        .join("、");
+      const note = await generatePharmacistSummary({
+        patientInfo,
+        clinicalNotes: geminiResult?.clinical_notes ?? "",
+        selectedSuggestions: selectedSugs,
+        briefComment: pharmacistNote,
+        model: summaryModel,
+      });
+      setPharmacistNote(note);
+      toast.success("AI要約を生成しました");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "生成に失敗しました");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const handleApprove = async () => {
     setIsSaving(true);
@@ -326,33 +374,47 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
       {geminiResult?.optimization_suggestions && geminiResult.optimization_suggestions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">AI処方最適化提案</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+              <span>AI処方最適化提案</span>
+              <span className="text-xs font-normal text-gray-400">
+                （チェックした提案をAI要約に反映）
+              </span>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {geminiResult.optimization_suggestions.map((sug: OptimizationSuggestion, i: number) => (
               <div
                 key={i}
-                className={`p-3 rounded-lg border ${PRIORITY_COLORS[sug.priority]}`}
+                className={`p-3 rounded-lg border ${PRIORITY_COLORS[sug.priority]} ${
+                  selectedSuggestionIndices.has(i) ? "" : "opacity-50"
+                }`}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline" className="text-xs">
-                        {sug.suggestion_type}
-                      </Badge>
-                      <span className="text-xs text-gray-500">
-                        {PRIORITY_LABELS[sug.priority]}
-                      </span>
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={selectedSuggestionIndices.has(i)}
+                    onCheckedChange={() => toggleSuggestion(i)}
+                    className="mt-0.5 shrink-0"
+                  />
+                  <div className="flex-1 flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="outline" className="text-xs">
+                          {sug.suggestion_type}
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          {PRIORITY_LABELS[sug.priority]}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium">{sug.target_drug}</p>
+                      <p className="text-sm text-gray-700 mt-0.5">{sug.detail}</p>
+                      <p className="text-xs text-gray-500 mt-1">根拠: {sug.rationale}</p>
                     </div>
-                    <p className="text-sm font-medium">{sug.target_drug}</p>
-                    <p className="text-sm text-gray-700 mt-0.5">{sug.detail}</p>
-                    <p className="text-xs text-gray-500 mt-1">根拠: {sug.rationale}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-sm font-bold text-green-600">
-                      -{sug.expected_mrci_reduction.toFixed(1)}
-                    </span>
-                    <p className="text-xs text-gray-400">MRCI削減</p>
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-bold text-green-600">
+                        -{sug.expected_mrci_reduction.toFixed(1)}
+                      </span>
+                      <p className="text-xs text-gray-400">MRCI削減</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -378,12 +440,40 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
           <div className="space-y-2">
             <Label>薬剤師コメント（任意）</Label>
             <Textarea
-              placeholder="医師への申し送り事項、注意点など"
+              placeholder="簡易コメントを入力するか空欄のまま「AI要約を生成」を押すとAIが自動生成します"
               className="h-24"
               value={pharmacistNote}
               onChange={(e) => setPharmacistNote(e.target.value)}
             />
           </div>
+
+          {/* AI要約生成 */}
+          {geminiResult && (
+            <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-lg border">
+              <p className="text-xs text-gray-500">
+                上の提案セクションでチェックした内容と入力済みコメント（空欄の場合はAI総合所見）を元に要約を生成します。
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <select
+                  value={summaryModel}
+                  onChange={(e) => setSummaryModel(e.target.value as GeminiModel)}
+                  className="text-sm border rounded px-2 py-1.5 bg-white"
+                  disabled={isGenerating}
+                >
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash（高速）</option>
+                  <option value="gemini-3-flash-preview">Gemini 3 Flash（高精度）</option>
+                </select>
+                <Button
+                  variant="outline"
+                  onClick={handleGenerateSummary}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? "生成中..." : "AI要約を生成"}
+                </Button>
+              </div>
+            </div>
+          )}
+
           <Button
             className="w-full"
             onClick={handleApprove}

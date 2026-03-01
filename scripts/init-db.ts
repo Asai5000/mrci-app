@@ -52,6 +52,25 @@ async function initDb() {
     )
   `);
 
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS renal_dosing_guidelines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT,
+      generic_name TEXT NOT NULL,
+      drug_number INTEGER,
+      brand_name TEXT,
+      route_category TEXT NOT NULL DEFAULT 'oral',
+      dialyzability TEXT,
+      renal_damage TEXT,
+      is_contraindicated INTEGER NOT NULL DEFAULT 0,
+      dose_normal TEXT,
+      dose_mild TEXT,
+      dose_moderate TEXT,
+      dose_severe TEXT,
+      dose_hd_pd TEXT
+    )
+  `);
+
   // Migration: add renal function columns if they don't exist
   const renalColumns = [
     "ALTER TABLE cases ADD COLUMN serum_creatinine REAL",

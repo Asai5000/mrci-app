@@ -2,7 +2,8 @@
 
 import { db } from "@/lib/db";
 import { cases, medications } from "@/lib/schema";
-import { analyzePrescription, analyzePrescriptionImage, type GeminiAnalysisResult, type GeminiModel, type RenalData } from "@/lib/gemini";
+import { analyzePrescription, analyzePrescriptionImage, generatePharmacistNote, type GeminiAnalysisResult, type GeminiModel, type OptimizationSuggestion, type PharmacistNoteInput, type RenalData } from "@/lib/gemini";
+import { augmentWithRenalDb } from "@/lib/renalDb";
 import { v4 as uuidv4 } from "uuid";
 import { eq } from "drizzle-orm";
 
@@ -13,7 +14,8 @@ export async function analyzeOnlyText(input: {
   model?: GeminiModel;
   renalData?: RenalData;
 }): Promise<GeminiAnalysisResult> {
-  return analyzePrescription(input.prescriptionText, input.model ?? "gemini-2.5-flash", input.renalData);
+  const result = await analyzePrescription(input.prescriptionText, input.model ?? "gemini-2.5-flash", input.renalData);
+  return augmentWithRenalDb(result, input.renalData);
 }
 
 export async function analyzeOnlyImage(input: {
@@ -21,11 +23,30 @@ export async function analyzeOnlyImage(input: {
   model?: GeminiModel;
   renalData?: RenalData;
 }): Promise<GeminiAnalysisResult> {
-  return analyzePrescriptionImage(
+  const result = await analyzePrescriptionImage(
     input.images.map((img) => ({ base64: img.imageBase64, mimeType: img.mimeType })),
     input.model ?? "gemini-2.5-flash",
     input.renalData
   );
+  return augmentWithRenalDb(result, input.renalData);
+}
+
+// ── AI薬剤師コメント生成 ──────────────────────────────────────────
+
+export async function generatePharmacistSummary(input: {
+  patientInfo: string;
+  clinicalNotes: string;
+  selectedSuggestions: OptimizationSuggestion[];
+  briefComment: string;
+  model?: GeminiModel;
+}): Promise<string> {
+  const noteInput: PharmacistNoteInput = {
+    patientInfo: input.patientInfo,
+    clinicalNotes: input.clinicalNotes,
+    selectedSuggestions: input.selectedSuggestions,
+    briefComment: input.briefComment,
+  };
+  return generatePharmacistNote(noteInput, input.model ?? "gemini-2.5-flash");
 }
 
 // ── 症例をDBに保存（登録ボタン押下時） ───────────────────────────

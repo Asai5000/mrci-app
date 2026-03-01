@@ -62,7 +62,25 @@ export const medicationsRelations = relations(medications, ({ one }) => ({
   }),
 }));
 
+export const renalDosingGuidelines = sqliteTable("renal_dosing_guidelines", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  category: text("category"),
+  genericName: text("generic_name").notNull(),
+  drugNumber: integer("drug_number"),
+  brandName: text("brand_name"),
+  routeCategory: text("route_category").notNull().default("oral"), // oral / injection / topical / inhalation / unknown
+  dialyzability: text("dialyzability"),
+  renalDamage: text("renal_damage"),
+  isContraindicated: integer("is_contraindicated").notNull().default(0),
+  doseNormal: text("dose_normal"),   // GFR/CCr 80以上
+  doseMild: text("dose_mild"),       // GFR/CCr 50〜79
+  doseModerate: text("dose_moderate"), // GFR/CCr 30〜49
+  doseSevere: text("dose_severe"),   // GFR/CCr 30未満
+  doseHdPd: text("dose_hd_pd"),     // HD/PD
+});
+
 export type Case = typeof cases.$inferSelect;
 export type NewCase = typeof cases.$inferInsert;
 export type Medication = typeof medications.$inferSelect;
 export type NewMedication = typeof medications.$inferInsert;
+export type RenalDosingGuideline = typeof renalDosingGuidelines.$inferSelect;
