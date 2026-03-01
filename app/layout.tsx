@@ -34,6 +34,12 @@ export default function RootLayout({
                   症例一覧
                 </a>
                 <a
+                  href="/renal-db"
+                  className="px-2 sm:px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  腎機能DB
+                </a>
+                <a
                   href="/analyze"
                   className="px-2 sm:px-3 py-1.5 text-sm bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors"
                 >
