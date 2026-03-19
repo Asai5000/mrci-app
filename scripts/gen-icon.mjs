@@ -37,9 +37,43 @@ const svgClean = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   </g>
 </svg>`;
 
-await sharp(Buffer.from(svgClean))
-  .resize(512, 512)
-  .png()
-  .toFile("app/icon.png");
+const svgBuffer = Buffer.from(svgClean);
 
+// app/icon.png (512x512)
+await sharp(svgBuffer).resize(512, 512).png().toFile("app/icon.png");
 console.log("✅ app/icon.png generated");
+
+// app/favicon.ico (16, 32, 48px の PNG を ICO にまとめる)
+import { writeFileSync } from "fs";
+
+const sizes = [16, 32, 48];
+const pngBuffers = await Promise.all(
+  sizes.map((s) => sharp(svgBuffer).resize(s, s).png().toBuffer())
+);
+
+const count = sizes.length;
+const headerSize = 6 + count * 16;
+let offset = headerSize;
+
+const icoHeader = Buffer.alloc(6);
+icoHeader.writeUInt16LE(0, 0);
+icoHeader.writeUInt16LE(1, 2);
+icoHeader.writeUInt16LE(count, 4);
+
+const entries = pngBuffers.map((buf, i) => {
+  const entry = Buffer.alloc(16);
+  const size = sizes[i];
+  entry.writeUInt8(size >= 256 ? 0 : size, 0);
+  entry.writeUInt8(size >= 256 ? 0 : size, 1);
+  entry.writeUInt8(0, 2);
+  entry.writeUInt8(0, 3);
+  entry.writeUInt16LE(1, 4);
+  entry.writeUInt16LE(32, 6);
+  entry.writeUInt32LE(buf.length, 8);
+  entry.writeUInt32LE(offset, 12);
+  offset += buf.length;
+  return entry;
+});
+
+writeFileSync("app/favicon.ico", Buffer.concat([icoHeader, ...entries, ...pngBuffers]));
+console.log("✅ app/favicon.ico generated");
