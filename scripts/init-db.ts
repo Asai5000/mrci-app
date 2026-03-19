@@ -86,6 +86,23 @@ async function initDb() {
     }
   }
 
+  // Migration: add optimization change tracking columns
+  const changeTrackingColumns = [
+    "ALTER TABLE medications ADD COLUMN change_type TEXT DEFAULT 'continued'",
+    "ALTER TABLE medications ADD COLUMN original_mrci_a REAL",
+    "ALTER TABLE medications ADD COLUMN original_mrci_b REAL",
+    "ALTER TABLE medications ADD COLUMN override_dosage_form TEXT",
+    "ALTER TABLE medications ADD COLUMN override_frequency TEXT",
+    "ALTER TABLE medications ADD COLUMN is_added INTEGER DEFAULT 0",
+  ];
+  for (const sql of changeTrackingColumns) {
+    try {
+      await client.execute(sql);
+    } catch {
+      // Column already exists — ignore
+    }
+  }
+
   console.log("✅ Database initialized successfully.");
   process.exit(0);
 }

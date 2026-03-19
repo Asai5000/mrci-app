@@ -49,6 +49,13 @@ export const medications = sqliteTable("medications", {
   optimizationNote: text("optimization_note"),
   pharmacistApproved: integer("pharmacist_approved").default(0),
   sortOrder: integer("sort_order").default(0),
+  // ── 最適化変更情報（追加カラム） ──
+  changeType: text("change_type").default("continued"), // continued/discontinued/form_changed/freq_changed/substituted
+  originalMrciA: real("original_mrci_a"),   // AI解析時の元スコア（リセット基準値）
+  originalMrciB: real("original_mrci_b"),   // 同上
+  overrideDosageForm: text("override_dosage_form"), // 変更後の剤形
+  overrideFrequency: text("override_frequency"),    // 変更後の用法
+  isAdded: integer("is_added").default(0),          // 1=最適化時に追加した薬剤
 });
 
 export const casesRelations = relations(cases, ({ many }) => ({

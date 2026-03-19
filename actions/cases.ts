@@ -24,6 +24,10 @@ export async function deleteCase(id: string) {
   await db.delete(cases).where(eq(cases.id, id));
 }
 
+export async function deleteAddedMedication(medId: string) {
+  await db.delete(medications).where(eq(medications.id, medId));
+}
+
 export async function updateMedication(
   medId: string,
   updates: {
