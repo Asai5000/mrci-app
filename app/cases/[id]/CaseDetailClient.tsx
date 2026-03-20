@@ -46,12 +46,18 @@ interface AddedMed {
 }
 
 // ── 用量パーサー ──────────────────────────────────────────────
-// "1錠 10mg" → { count: "1", unit: "錠", amount: "10mg" }
-// "10mg" → { count: null, unit: null, amount: "10mg" }
+// "400mg（2錠/日）" → { count: "2", unit: "錠/日", amount: "400mg" }
+// "2錠 200mg"      → { count: "2", unit: "錠",    amount: "200mg" }
+// "400mg"          → { count: null, unit: "錠",   amount: "400mg" }
 function parseDose(dose: string | null | undefined): { count: string | null; unit: string; amount: string | null } {
   if (!dose) return { count: null, unit: "錠", amount: null };
-  const m = dose.trim().match(/^(\d+(?:\.\d+)?)\s*(錠|包|カプセル|枚|mL|g|mg|μg|単位|IU)(.*)/i);
-  if (m) return { count: m[1], unit: m[2], amount: m[3].trim() || null };
+  const s = dose.trim();
+  // Pattern 1: "400mg（2錠/日）" or "400mg 2錠/日"
+  const m1 = s.match(/^([\d.]+\s*(?:mg|g|μg|mcg|mL|IU|単位))\s*[（(]?\s*(\d+(?:\.\d+)?)\s*(錠|包|カプセル|枚)\/日\s*[）)]?/i);
+  if (m1) return { count: m1[2], unit: `${m1[3]}/日`, amount: m1[1].trim() };
+  // Pattern 2: "2錠 200mg" or "1錠" (count first)
+  const m2 = s.match(/^(\d+(?:\.\d+)?)\s*(錠|包|カプセル|枚|mL|g|mg|μg|単位|IU)(.*)/i);
+  if (m2) return { count: m2[1], unit: m2[2], amount: m2[3].trim() || null };
   return { count: null, unit: "錠", amount: dose };
 }
 

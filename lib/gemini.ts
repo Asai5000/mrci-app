@@ -159,7 +159,7 @@ section_a_total = 重複排除後の剤形スコア合計（同一カテゴリ�
       "brand_name": "商品名",
       "dosage_form": "剤形",
       "route": "投与経路",
-      "dose": "用量",
+      "dose": "1日総量と錠数（錠剤・カプセルは必ず錠数を含める。例: 400mg（2錠/日）、200mg（1錠/日）、貼付剤なら1枚/日）",
       "frequency": "頻度",
       "special_instructions": ["指示1", "指示2"],
       "mrci_a": 数値,
