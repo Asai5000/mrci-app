@@ -45,6 +45,16 @@ interface AddedMed {
   note: string;
 }
 
+// ── 用量パーサー ──────────────────────────────────────────────
+// "1錠 10mg" → { count: "1", unit: "錠", amount: "10mg" }
+// "10mg" → { count: null, unit: null, amount: "10mg" }
+function parseDose(dose: string | null | undefined): { count: string | null; unit: string; amount: string | null } {
+  if (!dose) return { count: null, unit: "錠", amount: null };
+  const m = dose.trim().match(/^(\d+(?:\.\d+)?)\s*(錠|包|カプセル|枚|mL|g|mg|μg|単位|IU)(.*)/i);
+  if (m) return { count: m[1], unit: m[2], amount: m[3].trim() || null };
+  return { count: null, unit: "錠", amount: dose };
+}
+
 // ── 剤形カテゴリの日本語ラベル ────────────────────────────────
 const FORM_CATEGORY_LABELS: Record<string, string> = {
   tab_capsule: "錠剤・カプセル", topical_spray: "外用スプレー",
@@ -804,19 +814,33 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
 
                       {/* 用量・剤形 */}
                       <td className="py-2 pr-2 text-xs">
-                        {change.changeType === "dose_adjusted" && change.overrideDose ? (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-gray-400 line-through">{med.dose ?? "-"}</span>
-                            <span className="text-blue-600 font-medium">{change.overrideDose}</span>
-                          </div>
-                        ) : (
-                          <span className={`text-gray-600 ${isDiscontinued ? "line-through text-gray-400" : ""}`}>
-                            {med.dose ?? "-"}
-                          </span>
-                        )}
-                        {med.dosageForm && (
-                          <div className="text-gray-400 mt-0.5">{FORM_CATEGORY_LABELS[med.dosageForm] ?? med.dosageForm}</div>
-                        )}
+                        {(() => {
+                          const { count, unit, amount } = parseDose(med.dose);
+                          const isDoseAdjusted = change.changeType === "dose_adjusted" && change.overrideDose;
+                          return (
+                            <div className={`flex flex-col gap-0.5 ${isDiscontinued ? "opacity-40" : ""}`}>
+                              {isDoseAdjusted ? (
+                                <>
+                                  <span className="text-gray-400 line-through text-[10px]">
+                                    {count ? `${count}${unit}` : (med.dose ?? "-")}
+                                  </span>
+                                  <span className="text-blue-600 font-bold">{change.overrideDose}</span>
+                                </>
+                              ) : (
+                                <>
+                                  {count
+                                    ? <span className="font-semibold text-gray-800">{count}<span className="font-normal text-gray-500">{unit}</span></span>
+                                    : <span className="text-gray-400 text-[10px]">—</span>
+                                  }
+                                  {amount && <span className="text-gray-400 text-[10px]">{amount}</span>}
+                                </>
+                              )}
+                              {med.dosageForm && (
+                                <span className="text-gray-300 text-[10px]">{FORM_CATEGORY_LABELS[med.dosageForm] ?? med.dosageForm}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* 用法 */}
@@ -860,15 +884,28 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
                       {/* 変更詳細（剤形・用法・用量セレクト/入力） */}
                       <td className="py-2">
                         <div className="flex flex-col gap-1">
-                          {change.changeType === "dose_adjusted" && (
-                            <input
-                              type="text"
-                              value={change.overrideDose ?? ""}
-                              onChange={(e) => updateOverrideDose(med.id, e.target.value)}
-                              placeholder={`変更後の用量 (例: ${med.dose ?? "1錠"})`}
-                              className="text-xs border rounded px-1.5 py-0.5 bg-white w-full min-w-[140px]"
-                            />
-                          )}
+                          {change.changeType === "dose_adjusted" && (() => {
+                            const { unit } = parseDose(med.dose);
+                            const numVal = change.overrideDose?.replace(/[^\d.]/g, "") ?? "";
+                            return (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  step="0.5"
+                                  min="0.25"
+                                  max="20"
+                                  value={numVal}
+                                  onChange={(e) => {
+                                    const n = e.target.value;
+                                    updateOverrideDose(med.id, n ? `${n}${unit}` : "");
+                                  }}
+                                  className="text-xs border rounded px-1.5 py-0.5 bg-white w-16 text-center"
+                                  placeholder="数量"
+                                />
+                                <span className="text-xs text-gray-500 shrink-0">{unit}</span>
+                              </div>
+                            );
+                          })()}
                           {(change.changeType === "form_changed" || change.changeType === "substituted") && (
                             <select
                               value={change.overrideForm ?? ""}
