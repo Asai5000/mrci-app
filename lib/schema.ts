@@ -94,8 +94,6 @@ export const pmisDrugs = sqliteTable("pmis_drugs", {
   targetPatients: text("target_patients"),                  // 対象となる患者群
   recommendation: text("recommendation").notNull(),         // 推奨される使用法
   applicableGenericNames: text("applicable_generic_names"), // 該当する一般名（詳細・JSON配列）
-  drugPriceCode: text("drug_price_code"),                   // 薬価基準収載医薬品コード
-  atcCode: text("atc_code"),                                // ATCコード
 });
 
 export type Case = typeof cases.$inferSelect;

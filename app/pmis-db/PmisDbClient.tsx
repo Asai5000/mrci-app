@@ -30,8 +30,6 @@ const EMPTY_FORM: FormState = {
   targetPatients: null,
   recommendation: "",
   applicableGenericNames: null,
-  drugPriceCode: null,
-  atcCode: null,
 };
 
 function parseNames(json: string | null | undefined): string[] {
@@ -75,8 +73,6 @@ export default function PmisDbClient({ initialData }: Props) {
       targetPatients: drug.targetPatients ?? null,
       recommendation: drug.recommendation,
       applicableGenericNames: drug.applicableGenericNames ?? null,
-      drugPriceCode: drug.drugPriceCode ?? null,
-      atcCode: drug.atcCode ?? null,
     });
   }
 
@@ -198,12 +194,6 @@ export default function PmisDbClient({ initialData }: Props) {
                     {drug.recommendation}
                   </div>
 
-                  {(drug.atcCode || drug.drugPriceCode) && (
-                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      {drug.atcCode && <span>ATC: {drug.atcCode}</span>}
-                      {drug.drugPriceCode && <span className="truncate max-w-xs">薬価コード: {drug.drugPriceCode}</span>}
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex gap-2 shrink-0">
@@ -268,20 +258,6 @@ export default function PmisDbClient({ initialData }: Props) {
                 placeholder="可能な限り使用を控える。使用する場合は..." />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label>ATCコード</Label>
-                <Input value={form.atcCode ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, atcCode: e.target.value || null }))}
-                  placeholder="N05AA01" />
-              </div>
-              <div className="space-y-1">
-                <Label>薬価基準収載コード</Label>
-                <Input value={form.drugPriceCode ?? ""}
-                  onChange={(e) => setForm((f) => ({ ...f, drugPriceCode: e.target.value || null }))}
-                  placeholder="1179001..." />
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeDialog}>キャンセル</Button>

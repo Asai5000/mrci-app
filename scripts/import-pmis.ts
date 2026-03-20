@@ -85,9 +85,7 @@ async function main() {
     const genericNamesRaw   = clean(cols[2]);
     const targetPatients    = clean(cols[3]);
     const recommendation    = clean(cols[4]);
-    const applicableRaw     = cols[5] ? clean(cols[5]) : "";
-    const drugPriceCode     = cols[6] ? clean(cols[6]) : "";
-    const atcCode           = cols[7] ? clean(cols[7]) : "";
+    const applicableRaw = cols[5] ? clean(cols[5]) : "";
 
     if (!category || !drugClass || !recommendation) continue;
 
@@ -97,8 +95,8 @@ async function main() {
     await client.execute({
       sql: `INSERT INTO pmis_drugs
               (category, drug_class, generic_names, target_patients, recommendation,
-               applicable_generic_names, drug_price_code, atc_code)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+               applicable_generic_names)
+            VALUES (?, ?, ?, ?, ?, ?)`,
       args: [
         category,
         drugClass,
@@ -106,8 +104,6 @@ async function main() {
         targetPatients || null,
         recommendation,
         applicableNames.length ? JSON.stringify(applicableNames) : null,
-        drugPriceCode || null,
-        atcCode || null,
       ],
     });
     count++;
