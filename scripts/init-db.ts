@@ -73,6 +73,17 @@ async function initDb() {
     )
   `);
 
+  await client.execute(`
+    CREATE TABLE IF NOT EXISTS pmis_drugs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      category TEXT NOT NULL,
+      drug_class TEXT NOT NULL,
+      generic_names TEXT NOT NULL,
+      target_patients TEXT,
+      recommendation TEXT NOT NULL
+    )
+  `);
+
   // Migration: add renal function columns if they don't exist
   const renalColumns = [
     "ALTER TABLE cases ADD COLUMN serum_creatinine REAL",

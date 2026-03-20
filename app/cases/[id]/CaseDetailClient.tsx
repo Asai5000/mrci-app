@@ -18,12 +18,13 @@ import {
   type DosageFormCategory,
 } from "@/lib/mrci";
 import { toast } from "sonner";
-import type { Case, Medication } from "@/lib/schema";
+import type { Case, Medication, PmisDrug } from "@/lib/schema";
 import type { GeminiAnalysisResult, GeminiModel, NoteType, OptimizationSuggestion } from "@/lib/gemini";
 
 interface Props {
   caseData: Case & { medications: Medication[] };
   geminiResult: GeminiAnalysisResult | null;
+  pmisMatches: Record<string, PmisDrug[]>;
 }
 
 // ── 変更操作種別 ──────────────────────────────────────────────
@@ -144,7 +145,7 @@ const QUICK_PHRASES: Record<NoteType, string[]> = {
 };
 
 // ── コンポーネント ────────────────────────────────────────────
-export default function CaseDetailClient({ caseData, geminiResult }: Props) {
+export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }: Props) {
   const router = useRouter();
 
   // 元の薬剤 / 追加薬剤を分離
@@ -200,6 +201,7 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [selectedPmisDrug, setSelectedPmisDrug] = useState<{ drugName: string; entries: PmisDrug[] } | null>(null);
 
   const memoRef = useRef<HTMLTextAreaElement>(null);
   const generatedRef = useRef<HTMLTextAreaElement>(null);
@@ -706,6 +708,14 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
                             <span className="text-gray-400 text-xs">({med.brandName})</span>
                           )}
                           {renderChangeBadge(med, change)}
+                          {pmisMatches[med.drugName] && (
+                            <button
+                              onClick={() => setSelectedPmisDrug({ drugName: med.drugName, entries: pmisMatches[med.drugName] })}
+                              className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded border bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors font-medium w-fit"
+                            >
+                              ⚠ PMIS
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -1303,6 +1313,58 @@ export default function CaseDetailClient({ caseData, geminiResult }: Props) {
             </div>
 
             <Button variant="outline" className="w-full mt-4" onClick={() => setSelectedDrugDetail(null)}>
+              閉じる
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* PMIS詳細モーダル */}
+      {selectedPmisDrug && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => setSelectedPmisDrug(null)}>
+          <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4"
+            onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start gap-2">
+              <span className="text-xl">⚠️</span>
+              <div>
+                <h2 className="text-lg font-bold text-orange-800">PMIS 該当薬剤</h2>
+                <p className="text-sm text-gray-500">{selectedPmisDrug.drugName}</p>
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">高齢者に潜在的に不適切な薬剤（Potentially Inappropriate Medications）</p>
+            <div className="space-y-3">
+              {selectedPmisDrug.entries.map((entry) => {
+                let names: string[] = [];
+                try { names = JSON.parse(entry.genericNames); } catch { names = []; }
+                return (
+                  <div key={entry.id} className="border border-orange-200 rounded-lg p-3 bg-orange-50 space-y-2">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-orange-200 text-orange-800 font-medium">
+                        {entry.category}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        {entry.drugClass}
+                      </span>
+                    </div>
+                    {names.length > 0 && (
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">代表的な一般名: </span>{names.join("、")}
+                      </p>
+                    )}
+                    {entry.targetPatients && (
+                      <p className="text-xs text-gray-600">
+                        <span className="font-medium">対象患者群: </span>{entry.targetPatients}
+                      </p>
+                    )}
+                    <div className="text-sm text-orange-900 font-medium border-t border-orange-200 pt-2">
+                      {entry.recommendation}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <Button variant="outline" className="w-full" onClick={() => setSelectedPmisDrug(null)}>
               閉じる
             </Button>
           </div>

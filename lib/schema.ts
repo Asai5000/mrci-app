@@ -86,8 +86,19 @@ export const renalDosingGuidelines = sqliteTable("renal_dosing_guidelines", {
   doseHdPd: text("dose_hd_pd"),     // HD/PD
 });
 
+export const pmisDrugs = sqliteTable("pmis_drugs", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  category: text("category").notNull(),           // 分類（抗精神病薬など）
+  drugClass: text("drug_class").notNull(),         // 薬物クラス
+  genericNames: text("generic_names").notNull(),   // 代表的な一般名（JSON配列文字列）
+  targetPatients: text("target_patients"),         // 対象となる患者群
+  recommendation: text("recommendation").notNull(), // 推奨される使用法
+});
+
 export type Case = typeof cases.$inferSelect;
 export type NewCase = typeof cases.$inferInsert;
 export type Medication = typeof medications.$inferSelect;
 export type NewMedication = typeof medications.$inferInsert;
 export type RenalDosingGuideline = typeof renalDosingGuidelines.$inferSelect;
+export type PmisDrug = typeof pmisDrugs.$inferSelect;
+export type NewPmisDrug = typeof pmisDrugs.$inferInsert;
