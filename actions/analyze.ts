@@ -150,6 +150,7 @@ export interface MedicationUpdate {
   mrciC: number;
   overrideDosageForm?: string;
   overrideFrequency?: string;
+  overrideDose?: string;
   note: string;
 }
 
@@ -187,6 +188,7 @@ export async function approveCase(
         // 空文字列を null に変換（ドロップダウン未選択時の "" を防ぐ）
         overrideDosageForm: upd.overrideDosageForm || null,
         overrideFrequency: upd.overrideFrequency || null,
+        overrideDose: upd.overrideDose || null,
         optimizationNote: upd.note || null,
       })
       .where(eq(medications.id, med.id));

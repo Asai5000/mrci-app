@@ -115,6 +115,7 @@ async function initDb() {
     "ALTER TABLE medications ADD COLUMN original_mrci_b REAL",
     "ALTER TABLE medications ADD COLUMN override_dosage_form TEXT",
     "ALTER TABLE medications ADD COLUMN override_frequency TEXT",
+    "ALTER TABLE medications ADD COLUMN override_dose TEXT",
     "ALTER TABLE medications ADD COLUMN is_added INTEGER DEFAULT 0",
   ];
   for (const sql of changeTrackingColumns) {

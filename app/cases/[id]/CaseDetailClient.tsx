@@ -28,12 +28,13 @@ interface Props {
 }
 
 // ── 変更操作種別 ──────────────────────────────────────────────
-type ChangeType = "continued" | "discontinued" | "form_changed" | "freq_changed" | "substituted";
+type ChangeType = "continued" | "discontinued" | "dose_adjusted" | "form_changed" | "freq_changed" | "substituted";
 
 interface MedChange {
   changeType: ChangeType;
   overrideForm?: string;
   overrideFreq?: string;
+  overrideDose?: string;
 }
 
 interface AddedMed {
@@ -82,19 +83,21 @@ interface DrugDetailData {
 }
 
 const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
-  continued:   "継続",
-  discontinued:"中止",
-  form_changed:"剤形変更",
-  freq_changed:"用法変更",
-  substituted: "代替薬変更",
+  continued:     "継続",
+  discontinued:  "中止",
+  dose_adjusted: "用量調節",
+  form_changed:  "剤形変更",
+  freq_changed:  "用法変更",
+  substituted:   "代替薬変更",
 };
 
 const CHANGE_BADGE_STYLES: Record<ChangeType, string> = {
-  continued:   "hidden",
-  discontinued:"bg-red-100 text-red-700 border-red-200",
-  form_changed:"bg-blue-100 text-blue-700 border-blue-200",
-  freq_changed:"bg-blue-100 text-blue-700 border-blue-200",
-  substituted: "bg-purple-100 text-purple-700 border-purple-200",
+  continued:     "hidden",
+  discontinued:  "bg-red-100 text-red-700 border-red-200",
+  dose_adjusted: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  form_changed:  "bg-blue-100 text-blue-700 border-blue-200",
+  freq_changed:  "bg-blue-100 text-blue-700 border-blue-200",
+  substituted:   "bg-purple-100 text-purple-700 border-purple-200",
 };
 
 function getEffectiveScores(
@@ -172,6 +175,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
           changeType: ((m.changeType as ChangeType) ?? (m.isContinued === 0 ? "discontinued" : "continued")),
           overrideForm: m.overrideDosageForm ?? undefined,
           overrideFreq: m.overrideFrequency ?? undefined,
+          overrideDose: m.overrideDose ?? undefined,
         },
       ])
     )
@@ -232,6 +236,12 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
     setMedChanges((prev) => ({
       ...prev,
       [medId]: { ...(prev[medId] ?? { changeType: "freq_changed" }), overrideFreq: freq },
+    }));
+  };
+  const updateOverrideDose = (medId: string, dose: string) => {
+    setMedChanges((prev) => ({
+      ...prev,
+      [medId]: { ...(prev[medId] ?? { changeType: "dose_adjusted" }), overrideDose: dose },
     }));
   };
 
@@ -408,6 +418,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
             const label = CHANGE_TYPE_LABELS[change.changeType];
             const note = manualNotes[med.id]?.trim();
             let detail = "";
+            if (change.overrideDose) detail += ` → 用量: ${med.dose ?? ""}→${change.overrideDose}`;
             if (change.overrideForm) detail += ` → 剤形: ${change.overrideForm}`;
             if (change.overrideFreq) detail += ` → 用法: ${change.overrideFreq}`;
             const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
@@ -471,7 +482,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
       const medicationUpdates: Record<string, {
         changeType: string; isContinued: boolean;
         mrciA: number; mrciB: number; mrciC: number;
-        overrideDosageForm?: string; overrideFrequency?: string; note: string;
+        overrideDosageForm?: string; overrideFrequency?: string; overrideDose?: string; note: string;
       }> = {};
 
       for (const med of originalMeds) {
@@ -489,6 +500,8 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
           const origFreq = med.frequency ?? "";
           const origB = med.originalMrciB ?? med.mrciB ?? 0;
           noteFromChange = `用法変更: ${origFreq}(B=${origB})→${change.overrideFreq}(B=${scores.b})`;
+        } else if (change.changeType === "dose_adjusted" && change.overrideDose) {
+          noteFromChange = `用量調節: ${med.dose ?? ""}→${change.overrideDose}`;
         } else if (change.changeType === "substituted") {
           const parts: string[] = [];
           if (change.overrideForm) parts.push(`剤形:${change.overrideForm}`);
@@ -505,6 +518,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
           mrciA: scores.a, mrciB: scores.b, mrciC: scores.c,
           overrideDosageForm: change.overrideForm,
           overrideFrequency: change.overrideFreq,
+          overrideDose: change.overrideDose,
           note: finalNote,
         };
       }
@@ -789,8 +803,20 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
                       </td>
 
                       {/* 用量・剤形 */}
-                      <td className="py-2 pr-2 text-gray-600 text-xs">
-                        {med.dose ?? "-"} {med.dosageForm ?? ""}
+                      <td className="py-2 pr-2 text-xs">
+                        {change.changeType === "dose_adjusted" && change.overrideDose ? (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-gray-400 line-through">{med.dose ?? "-"}</span>
+                            <span className="text-blue-600 font-medium">{change.overrideDose}</span>
+                          </div>
+                        ) : (
+                          <span className={`text-gray-600 ${isDiscontinued ? "line-through text-gray-400" : ""}`}>
+                            {med.dose ?? "-"}
+                          </span>
+                        )}
+                        {med.dosageForm && (
+                          <div className="text-gray-400 mt-0.5">{FORM_CATEGORY_LABELS[med.dosageForm] ?? med.dosageForm}</div>
+                        )}
                       </td>
 
                       {/* 用法 */}
@@ -831,9 +857,18 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
                         {isDiscontinued ? "0.0" : effectiveTotal.toFixed(1)}
                       </td>
 
-                      {/* 変更詳細（剤形・用法セレクトのみ） */}
+                      {/* 変更詳細（剤形・用法・用量セレクト/入力） */}
                       <td className="py-2">
                         <div className="flex flex-col gap-1">
+                          {change.changeType === "dose_adjusted" && (
+                            <input
+                              type="text"
+                              value={change.overrideDose ?? ""}
+                              onChange={(e) => updateOverrideDose(med.id, e.target.value)}
+                              placeholder={`変更後の用量 (例: ${med.dose ?? "1錠"})`}
+                              className="text-xs border rounded px-1.5 py-0.5 bg-white w-full min-w-[140px]"
+                            />
+                          )}
                           {(change.changeType === "form_changed" || change.changeType === "substituted") && (
                             <select
                               value={change.overrideForm ?? ""}

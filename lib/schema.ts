@@ -55,6 +55,7 @@ export const medications = sqliteTable("medications", {
   originalMrciB: real("original_mrci_b"),   // 同上
   overrideDosageForm: text("override_dosage_form"), // 変更後の剤形
   overrideFrequency: text("override_frequency"),    // 変更後の用法
+  overrideDose: text("override_dose"),              // 変更後の用量（用量調節時）
   isAdded: integer("is_added").default(0),          // 1=最適化時に追加した薬剤
 });
 
