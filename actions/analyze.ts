@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { cases, medications } from "@/lib/schema";
 import { analyzePrescription, analyzePrescriptionImage, generatePharmacistNote, type GeminiAnalysisResult, type GeminiModel, type NoteType, type OptimizationSuggestion, type PharmacistNoteInput, type RenalData } from "@/lib/gemini";
 import { augmentWithRenalDb } from "@/lib/renalDb";
+import { matchPmisDrugs } from "@/lib/pmisDb";
 import { calculateSectionA } from "@/lib/mrci";
 import { v4 as uuidv4 } from "uuid";
 import { eq, and } from "drizzle-orm";
@@ -41,6 +42,7 @@ export async function generatePharmacistSummary(input: {
   briefComment: string;
   noteType: NoteType;
   model?: GeminiModel;
+  clinicalSummary?: string;
 }): Promise<string> {
   const noteInput: PharmacistNoteInput = {
     patientInfo: input.patientInfo,
@@ -48,6 +50,7 @@ export async function generatePharmacistSummary(input: {
     selectedSuggestions: input.selectedSuggestions,
     briefComment: input.briefComment,
     noteType: input.noteType,
+    clinicalSummary: input.clinicalSummary,
   };
   return generatePharmacistNote(noteInput, input.model ?? "gemini-2.5-flash");
 }
@@ -97,12 +100,18 @@ export async function saveCase(input: {
   const sectionBCInit = medItems.reduce((sum, m) => sum + (m.mrciB ?? 0) + (m.mrciC ?? 0), 0);
   const optimizedTotal = sectionAInit + sectionBCInit;
 
+  // PMIS照合
+  const pmisResult = await matchPmisDrugs(medItems.map((m) => m.drugName));
+  const pmisNames = new Set(Object.keys(pmisResult));
+
   // デフォルトの臨床サマリーを生成（全薬剤継続・薬剤師コメントなし）
   const summary = generateClinicalSummary(
     medItems.map((m) => ({ drugName: m.drugName, dose: m.dose, frequency: m.frequency, optimizationNote: null, id: m.id })),
     allMedIds,
     optimizedTotal,
-    ""
+    "",
+    undefined,
+    pmisNames
   );
 
   await db.insert(cases).values({
@@ -236,12 +245,21 @@ export async function approveCase(
     .filter((m) => medicationUpdates[m.id]?.isContinued || m.isAdded === 1)
     .map((m) => m.id);
 
+  // PMIS照合（全薬剤 + 新規追加薬）
+  const allDrugNames = [
+    ...allMeds.map((m) => m.drugName),
+    ...newMedications.map((m) => m.drugName).filter(Boolean),
+  ];
+  const pmisResult = await matchPmisDrugs(allDrugNames);
+  const pmisNames = new Set(Object.keys(pmisResult));
+
   const summary = generateClinicalSummary(
     allMedsWithNotes,
     approvedIds,
     optimizedTotal,
     pharmacistNote,
-    newMedications.filter((m) => m.drugName).map((m) => m.drugName)
+    newMedications.filter((m) => m.drugName).map((m) => m.drugName),
+    pmisNames
   );
 
   await db
@@ -312,24 +330,32 @@ function generateClinicalSummary(
   approvedIds: string[],
   optimizedTotal: number,
   pharmacistNote: string,
-  addedMedNames?: string[]
+  addedMedNames?: string[],
+  pmisNames?: Set<string>
 ): string {
   const continued = allMeds.filter((m) => approvedIds.includes(m.id ?? ""));
   const discontinued = allMeds.filter((m) => !approvedIds.includes(m.id ?? ""));
-
   const totalAfter = continued.length + (addedMedNames?.length ?? 0);
+
+  // PMIS該当薬（持参薬の中で）
+  const pmisInAdmission = allMeds.filter((m) => pmisNames?.has(m.drugName));
 
   const lines = [
     "【持参薬鑑別結果】",
     `持参薬: ${allMeds.length}剤 → 最適化後: ${totalAfter}剤 (MRCI: ${optimizedTotal.toFixed(1)})`,
-    "",
-    "【継続薬】",
-    ...continued.map((m) => {
-      const note = m.optimizationNote;
-      const hasChange = note && note !== "中止" && !note.startsWith("新規追加");
-      return `・${m.drugName} ${m.dose ?? ""} ${m.frequency ?? ""}${hasChange ? ` [${note}]` : ""}`;
-    }),
   ];
+
+  if (pmisInAdmission.length > 0) {
+    lines.push(`※ PMIS該当薬: ${pmisInAdmission.map((m) => m.drugName).join("、")}`);
+  }
+
+  lines.push("", "【継続薬】");
+  lines.push(...continued.map((m) => {
+    const note = m.optimizationNote;
+    const hasChange = note && note !== "中止" && !note.startsWith("新規追加");
+    const pmisMark = pmisNames?.has(m.drugName) ? " ⚠PMIS" : "";
+    return `・${m.drugName} ${m.dose ?? ""} ${m.frequency ?? ""}${pmisMark}${hasChange ? ` [${note}]` : ""}`;
+  }));
 
   if (addedMedNames && addedMedNames.length > 0) {
     lines.push("", "【追加薬剤】");
@@ -339,9 +365,10 @@ function generateClinicalSummary(
   if (discontinued.length > 0) {
     lines.push("", "【中止・変更検討薬】");
     lines.push(
-      ...discontinued.map(
-        (m) => `・${m.drugName} ${m.optimizationNote ? `→ ${m.optimizationNote}` : "(中止)"}`
-      )
+      ...discontinued.map((m) => {
+        const pmisMark = pmisNames?.has(m.drugName) ? " ⚠PMIS" : "";
+        return `・${m.drugName}${pmisMark} ${m.optimizationNote ? `→ ${m.optimizationNote}` : "(中止)"}`;
+      })
     );
   }
 

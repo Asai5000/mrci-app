@@ -130,18 +130,20 @@ const PRIORITY_LABELS: Record<string, string> = {
   high: "優先度: 高", medium: "優先度: 中", low: "優先度: 低",
 };
 const NOTE_TYPES: { value: NoteType; label: string }[] = [
-  { value: "chart",         label: "カルテ記載" },
-  { value: "doctor",        label: "医師申し送り" },
-  { value: "nurse",         label: "看護師申し送り" },
-  { value: "inquiry",       label: "疑義照会メモ" },
-  { value: "guidance_soap", label: "指導記録 (SOAP)" },
+  { value: "chart",            label: "カルテ記載" },
+  { value: "doctor",           label: "医師申し送り" },
+  { value: "nurse",            label: "看護師申し送り" },
+  { value: "inquiry",          label: "疑義照会メモ" },
+  { value: "guidance_soap",    label: "指導記録 (SOAP)" },
+  { value: "discharge_summary", label: "退院サマリー" },
 ];
 const QUICK_PHRASES: Record<NoteType, string[]> = {
-  chart:         ["全薬剤継続", "疑義照会対応済", "医師確認済", "減量指示あり", "持参薬中止"],
-  doctor:        ["要確認あり", "用量変更提案", "疑義照会実施済", "中止検討", "減量指示依頼"],
-  nurse:         ["服薬指導実施", "理解良好", "要フォロー", "家族への説明必要", "アドヒアランス良好"],
-  inquiry:       ["照会内容：", "根拠：", "対応結果：", "医師回答：", "変更指示あり"],
-  guidance_soap: ["S：", "O：", "A：", "P：", "確認要", "次回フォロー予定"],
+  chart:            ["全薬剤継続", "疑義照会対応済", "医師確認済", "減量指示あり", "持参薬中止"],
+  doctor:           ["要確認あり", "用量変更提案", "疑義照会実施済", "中止検討", "減量指示依頼"],
+  nurse:            ["服薬指導実施", "理解良好", "要フォロー", "家族への説明必要", "アドヒアランス良好"],
+  inquiry:          ["照会内容：", "根拠：", "対応結果：", "医師回答：", "変更指示あり"],
+  guidance_soap:    ["S：", "O：", "A：", "P：", "確認要", "次回フォロー予定"],
+  discharge_summary: ["PMIS該当あり", "ポリファーマシー改善", "用量調整済", "かかりつけ連携要", "退院後経過観察"],
 };
 
 // ── コンポーネント ────────────────────────────────────────────
@@ -378,10 +380,77 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
         caseData.calculatedCrcl != null ? `CrCl: ${caseData.calculatedCrcl} mL/min` : null,
         caseData.calculatedEgfr != null ? `eGFR: ${caseData.calculatedEgfr} mL/min/1.73m²` : null,
       ].filter(Boolean).join("、");
+      // 退院サマリー用: 実際の変更内容を構造化テキストとして組み立てる
+      let dischargeSummaryContext: string | undefined;
+      if (noteType === "discharge_summary") {
+        const lines: string[] = [];
+
+        // 入院前処方（持参薬）
+        lines.push("【持参薬一覧（入院前）】");
+        for (const med of originalMeds) {
+          const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
+          lines.push(`・${med.drugName}${med.brandName ? `（${med.brandName}）` : ""}${pmisFlag}`);
+        }
+        lines.push(`持参薬剤数: ${originalMeds.length}剤、入院前MRCI: ${originalMrci.toFixed(1)}`);
+        lines.push("");
+
+        // 変更・中止・追加の内容
+        lines.push("【薬剤変更内容（実際の変更）】");
+        const changed = originalMeds.filter((m) => {
+          const ct = medChanges[m.id]?.changeType ?? "continued";
+          return ct !== "continued";
+        });
+        if (changed.length === 0) {
+          lines.push("（変更・中止なし）");
+        } else {
+          for (const med of changed) {
+            const change = medChanges[med.id];
+            const label = CHANGE_TYPE_LABELS[change.changeType];
+            const note = manualNotes[med.id]?.trim();
+            let detail = "";
+            if (change.overrideForm) detail += ` → 剤形: ${change.overrideForm}`;
+            if (change.overrideFreq) detail += ` → 用法: ${change.overrideFreq}`;
+            const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
+            lines.push(`・${med.drugName}${pmisFlag}: 【${label}】${detail}`);
+            if (note) lines.push(`  理由: ${note}`);
+          }
+        }
+        // DB保存済み追加薬
+        for (const med of localAddedMeds.filter((m) => !pendingDeleteMedIds.has(m.id))) {
+          const note = med.optimizationNote?.trim();
+          lines.push(`・${med.drugName}: 【新規追加】`);
+          if (note) lines.push(`  備考: ${note}`);
+        }
+        // 未保存追加薬
+        for (const med of newAddedMeds.filter((m) => m.drugName.trim())) {
+          lines.push(`・${med.drugName}: 【新規追加（未保存）】`);
+          if (med.note) lines.push(`  備考: ${med.note}`);
+        }
+        lines.push("");
+
+        // 退院時処方
+        const continuedMeds = originalMeds.filter((m) => (medChanges[m.id]?.changeType ?? "continued") !== "discontinued");
+        lines.push("【退院時処方（最適化後）】");
+        for (const med of continuedMeds) {
+          const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
+          lines.push(`・${med.drugName}${pmisFlag}`);
+        }
+        for (const med of localAddedMeds.filter((m) => !pendingDeleteMedIds.has(m.id))) {
+          lines.push(`・${med.drugName}（追加）`);
+        }
+        for (const med of newAddedMeds.filter((m) => m.drugName.trim())) {
+          lines.push(`・${med.drugName}（追加・未保存）`);
+        }
+        lines.push(`退院時剤数: ${continuedCount}剤、退院時MRCI: ${currentMrci.toFixed(1)}（削減: ${reduction.toFixed(1)} / ${reductionPct.toFixed(0)}%）`);
+
+        dischargeSummaryContext = [editableSummary, lines.join("\n")].filter(Boolean).join("\n\n");
+      }
+
       const note = await generatePharmacistSummary({
         patientInfo, clinicalNotes: geminiResult?.clinical_notes ?? "",
         selectedSuggestions: selectedSugs, briefComment: pharmacistMemo,
         noteType, model: summaryModel,
+        clinicalSummary: noteType === "discharge_summary" ? dischargeSummaryContext : undefined,
       });
       setGeneratedNote(note);
       toast.success("生成しました");

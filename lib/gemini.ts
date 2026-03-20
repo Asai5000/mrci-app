@@ -189,7 +189,7 @@ section_a_total = 重複排除後の剤形スコア合計（同一カテゴリ�
 
 export type GeminiModel = "gemini-2.5-flash" | "gemini-3-flash-preview";
 
-export type NoteType = "chart" | "doctor" | "nurse" | "inquiry" | "guidance_soap";
+export type NoteType = "chart" | "doctor" | "nurse" | "inquiry" | "guidance_soap" | "discharge_summary";
 
 export interface PharmacistNoteInput {
   patientInfo: string;
@@ -197,6 +197,7 @@ export interface PharmacistNoteInput {
   selectedSuggestions: OptimizationSuggestion[];
   briefComment: string;
   noteType: NoteType;
+  clinicalSummary?: string; // 退院サマリー生成時に使用
 }
 
 function buildRenalPromptSection(renalData: RenalData): string {
@@ -341,6 +342,34 @@ P（プラン）:
 - 各セクションを必ず「S（主観的情報）:」「O（客観的情報）:」「A（アセスメント）:」「P（プラン）:」のラベルで始める
 - 入力情報から合理的に推定できる内容を記載（不明な場合は「確認要」と記載）
 - プレーンテキストのみ（JSONは不要）`;
+
+    case "discharge_summary":
+      return `あなたは病院薬剤師として、退院時の薬剤管理サマリーを作成してください。
+
+【絶対的なルール】
+- 以下に提供する「薬剤経過データ」に記載された薬剤名・変更内容・理由は一切変更・省略・創作しないこと
+- 変更区分（中止・剤形変更・用法変更・代替薬変更・新規追加）は必ずそのまま使用すること
+- 変更理由が「理由:」として記載されている場合はそのまま転記すること
+- 情報が不足している箇所（患者状態・フォローアップ等）のみ薬学的根拠をもとに補完してよい
+
+【出力形式 — 必ずこの4項目構成で出力すること】
+【１．入院前の薬剤情報】
+持参薬の内容・剤数・MRCI値（入院前）・PMIS該当薬の有無
+
+【２．入院中の薬剤変更・調整内容】
+変更・中止・追加になった薬剤とその理由（薬剤経過データの内容を必ず使用すること）
+
+【３．退院時処方内容】
+最適化後の薬剤内容・剤数・MRCI値（退院時）・ポリファーマシー改善状況
+
+【４．変更後の患者状態・フォローアップ】
+介入後の患者状態の変化・アドヒアランス・退院後の注意事項・かかりつけへの申し送り事項
+
+【その他の注意】
+- 各セクションを必ず上記の【１．】〜【４．】のラベルで始める
+- PMIS該当薬（⚠PMISマーク）がある場合は【１．】および【２．】で明記すること
+- 数値（剤数・MRCI値）は薬剤経過データに記載された数値をそのまま使用すること
+- プレーンテキストのみ（JSONは不要）`;
   }
 }
 
@@ -365,6 +394,10 @@ export async function generatePharmacistNote(
 
   const noteTypePrompt = buildNoteTypePrompt(input.noteType);
 
+  const clinicalSummarySection = input.clinicalSummary
+    ? `\n【薬剤経過データ（必ずこの内容を使用すること・変更・省略・創作禁止）】\n${input.clinicalSummary}\n`
+    : "";
+
   const prompt = `${noteTypePrompt}
 
 【患者情報】
@@ -372,7 +405,7 @@ ${input.patientInfo}
 
 【薬剤師が選択した最適化提案】
 ${suggestionText}
-
+${clinicalSummarySection}
 【薬剤師のメモ（入力がある場合は優先）】
 ${input.briefComment || "（入力なし）"}
 
