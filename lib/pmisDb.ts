@@ -2,15 +2,18 @@ import { db } from "./db";
 import { pmisDrugs } from "./schema";
 import type { PmisDrug } from "./schema";
 
-/**
- * PMIS薬剤リストを全件取得
- */
 export async function getAllPmisDrugs(): Promise<PmisDrug[]> {
   return db.select().from(pmisDrugs).orderBy(pmisDrugs.id);
 }
 
+function parseJson(json: string | null | undefined): string[] {
+  if (!json) return [];
+  try { return JSON.parse(json) as string[]; } catch { return []; }
+}
+
 /**
- * 薬剤名リストをPMISテーブルと照合し、ヒットしたエントリを返す。
+ * 薬剤名リストをPMISテーブルと照合。
+ * 優先順: applicableGenericNames（詳細一般名）> genericNames（代表一般名）
  * 戻り値: { [drugName]: PmisDrug[] }
  */
 export async function matchPmisDrugs(
@@ -22,23 +25,23 @@ export async function matchPmisDrugs(
   const result: Record<string, PmisDrug[]> = {};
 
   for (const drugName of drugNames) {
-    const hits: PmisDrug[] = [];
     const nameLower = drugName.toLowerCase();
+    const hits: PmisDrug[] = [];
 
     for (const entry of all) {
-      let names: string[] = [];
-      try {
-        names = JSON.parse(entry.genericNames) as string[];
-      } catch {
-        names = [entry.genericNames];
-      }
-
-      // 薬剤名 ↔ PMIS一般名の双方向部分一致
-      const matched = names.some(
-        (n) =>
-          n && (nameLower.includes(n.toLowerCase()) || n.toLowerCase().includes(nameLower))
+      // 1. 該当する一般名（詳細）で完全/部分一致
+      const applicable = parseJson(entry.applicableGenericNames);
+      const hitApplicable = applicable.some(
+        (n) => n && (nameLower.includes(n.toLowerCase()) || n.toLowerCase().includes(nameLower))
       );
-      if (matched) hits.push(entry);
+
+      // 2. 代表的な一般名でフォールバック
+      const representative = parseJson(entry.genericNames);
+      const hitRepresentative = representative.some(
+        (n) => n && (nameLower.includes(n.toLowerCase()) || n.toLowerCase().includes(nameLower))
+      );
+
+      if (hitApplicable || hitRepresentative) hits.push(entry);
     }
 
     if (hits.length > 0) result[drugName] = hits;

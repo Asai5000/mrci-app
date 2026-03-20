@@ -88,11 +88,14 @@ export const renalDosingGuidelines = sqliteTable("renal_dosing_guidelines", {
 
 export const pmisDrugs = sqliteTable("pmis_drugs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  category: text("category").notNull(),           // 分類（抗精神病薬など）
-  drugClass: text("drug_class").notNull(),         // 薬物クラス
-  genericNames: text("generic_names").notNull(),   // 代表的な一般名（JSON配列文字列）
-  targetPatients: text("target_patients"),         // 対象となる患者群
-  recommendation: text("recommendation").notNull(), // 推奨される使用法
+  category: text("category").notNull(),                     // 分類
+  drugClass: text("drug_class").notNull(),                  // 薬物クラスまたは一般名
+  genericNames: text("generic_names").notNull(),            // 代表的な一般名（JSON配列）
+  targetPatients: text("target_patients"),                  // 対象となる患者群
+  recommendation: text("recommendation").notNull(),         // 推奨される使用法
+  applicableGenericNames: text("applicable_generic_names"), // 該当する一般名（詳細・JSON配列）
+  drugPriceCode: text("drug_price_code"),                   // 薬価基準収載医薬品コード
+  atcCode: text("atc_code"),                                // ATCコード
 });
 
 export type Case = typeof cases.$inferSelect;

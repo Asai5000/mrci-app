@@ -84,6 +84,15 @@ async function initDb() {
     )
   `);
 
+  // Migration: add PMIS detail columns if they don't exist
+  for (const sql of [
+    "ALTER TABLE pmis_drugs ADD COLUMN applicable_generic_names TEXT",
+    "ALTER TABLE pmis_drugs ADD COLUMN drug_price_code TEXT",
+    "ALTER TABLE pmis_drugs ADD COLUMN atc_code TEXT",
+  ]) {
+    try { await client.execute(sql); } catch { /* already exists */ }
+  }
+
   // Migration: add renal function columns if they don't exist
   const renalColumns = [
     "ALTER TABLE cases ADD COLUMN serum_creatinine REAL",
