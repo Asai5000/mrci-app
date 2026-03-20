@@ -816,27 +816,23 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
                       <td className="py-2 pr-2 text-xs">
                         {(() => {
                           const { count, unit, amount } = parseDose(med.dose);
+                          const formLabel = med.dosageForm ? (FORM_CATEGORY_LABELS[med.dosageForm] ?? med.dosageForm) : null;
                           const isDoseAdjusted = change.changeType === "dose_adjusted" && change.overrideDose;
+                          // 表示: "5mg 2錠 錠剤" の形式
+                          const doseText = [amount, count ? `${count}${unit}` : null].filter(Boolean).join(" ") || (med.dose ?? "-");
                           return (
                             <div className={`flex flex-col gap-0.5 ${isDiscontinued ? "opacity-40" : ""}`}>
                               {isDoseAdjusted ? (
                                 <>
-                                  <span className="text-gray-400 line-through text-[10px]">
-                                    {count ? `${count}${unit}` : (med.dose ?? "-")}
-                                  </span>
-                                  <span className="text-blue-600 font-bold">{change.overrideDose}</span>
+                                  <span className="text-gray-400 line-through text-[10px]">{doseText}</span>
+                                  <span className="text-blue-600 font-medium">{change.overrideDose}</span>
+                                  {formLabel && <span className="text-gray-400 text-[10px]">{formLabel}</span>}
                                 </>
                               ) : (
                                 <>
-                                  {count
-                                    ? <span className="font-semibold text-gray-800">{count}<span className="font-normal text-gray-500">{unit}</span></span>
-                                    : <span className="text-gray-400 text-[10px]">—</span>
-                                  }
-                                  {amount && <span className="text-gray-400 text-[10px]">{amount}</span>}
+                                  <span className="text-gray-700">{doseText}</span>
+                                  {formLabel && <span className="text-gray-400 text-[10px]">{formLabel}</span>}
                                 </>
-                              )}
-                              {med.dosageForm && (
-                                <span className="text-gray-300 text-[10px]">{FORM_CATEGORY_LABELS[med.dosageForm] ?? med.dosageForm}</span>
                               )}
                             </div>
                           );
