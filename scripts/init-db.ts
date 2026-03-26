@@ -108,6 +108,11 @@ async function initDb() {
     }
   }
 
+  // Migration: rename pmis_drugs → pims_drugs
+  try {
+    await client.execute("ALTER TABLE pmis_drugs RENAME TO pims_drugs");
+  } catch { /* already renamed or doesn't exist */ }
+
   // Migration: add optimization change tracking columns
   const changeTrackingColumns = [
     "ALTER TABLE medications ADD COLUMN change_type TEXT DEFAULT 'continued'",
