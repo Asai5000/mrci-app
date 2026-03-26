@@ -108,10 +108,14 @@ async function initDb() {
     }
   }
 
-  // Migration: rename pmis_drugs → pims_drugs
+  // Migration: rename pmis_drugs → pims_drugs (safe: drop empty new table first)
   try {
-    await client.execute("ALTER TABLE pmis_drugs RENAME TO pims_drugs");
-  } catch { /* already renamed or doesn't exist */ }
+    const check = await client.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='pmis_drugs'");
+    if (check.rows.length > 0) {
+      await client.execute("DROP TABLE IF EXISTS pims_drugs");
+      await client.execute("ALTER TABLE pmis_drugs RENAME TO pims_drugs");
+    }
+  } catch { /* already done */ }
 
   // Migration: add optimization change tracking columns
   const changeTrackingColumns = [
