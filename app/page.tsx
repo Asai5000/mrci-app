@@ -102,6 +102,7 @@ export default async function HomePage() {
                             day: "numeric",
                             hour: "2-digit",
                             minute: "2-digit",
+                            timeZone: "Asia/Tokyo",
                           })}
                         </td>
                         <td className="py-3 pr-3 whitespace-nowrap">
