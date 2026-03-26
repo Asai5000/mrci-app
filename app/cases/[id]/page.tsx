@@ -1,7 +1,7 @@
 import { getCase } from "@/actions/cases";
 import { notFound } from "next/navigation";
 import CaseDetailClient from "./CaseDetailClient";
-import { matchPmisDrugs } from "@/lib/pmisDb";
+import { matchPmisDrugs } from "@/lib/pimsDb";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +19,13 @@ export default async function CaseDetailPage({
     : null;
 
   const drugNames = caseData.medications.map((m) => m.drugName);
-  const pmisMatches = await matchPmisDrugs(drugNames);
+  const pimsMatches = await matchPmisDrugs(drugNames);
 
   return (
     <CaseDetailClient
       caseData={caseData}
       geminiResult={geminiResult}
-      pmisMatches={pmisMatches}
+      pimsMatches={pimsMatches}
     />
   );
 }

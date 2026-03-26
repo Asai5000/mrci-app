@@ -1,8 +1,8 @@
 /**
- * PMISデータをDBにインポートするスクリプト
+ * PIMSデータをDBにインポートするスクリプト
  * 使い方:
- *   ローカル: npx tsx scripts/import-pmis.ts
- *   本番:    npx tsx scripts/import-pmis.ts --prod
+ *   ローカル: npx tsx scripts/import-pims.ts
+ *   本番:    npx tsx scripts/import-pims.ts --prod
  */
 import { config } from "dotenv";
 config({ path: ".env.local" });
@@ -41,11 +41,11 @@ function parseApplicableNames(raw: string): string[] {
 }
 
 async function main() {
-  console.log(`📥 PMISインポート先: ${isProd ? "本番Turso" : "ローカルDB"}`);
+  console.log(`📥 PIMSインポート先: ${isProd ? "本番Turso" : "ローカルDB"}`);
 
   // テーブル作成（なければ）
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS pmis_drugs (
+    CREATE TABLE IF NOT EXISTS pims_drugs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category TEXT NOT NULL,
       drug_class TEXT NOT NULL,
@@ -60,17 +60,17 @@ async function main() {
 
   // カラムが既存テーブルに存在しない場合は追加
   for (const sql of [
-    "ALTER TABLE pmis_drugs ADD COLUMN applicable_generic_names TEXT",
-    "ALTER TABLE pmis_drugs ADD COLUMN drug_price_code TEXT",
-    "ALTER TABLE pmis_drugs ADD COLUMN atc_code TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN applicable_generic_names TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN drug_price_code TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN atc_code TEXT",
   ]) {
     try { await client.execute(sql); } catch { /* already exists */ }
   }
 
   // 既存データをクリア
-  await client.execute("DELETE FROM pmis_drugs");
+  await client.execute("DELETE FROM pims_drugs");
 
-  const raw = readFileSync(resolve(process.cwd(), "pmis"), "utf-8");
+  const raw = readFileSync(resolve(process.cwd(), "pims"), "utf-8");
   const lines = raw.trim().split("\n").slice(1); // ヘッダーをスキップ
 
   let count = 0;
@@ -93,7 +93,7 @@ async function main() {
     const applicableNames = parseApplicableNames(applicableRaw);
 
     await client.execute({
-      sql: `INSERT INTO pmis_drugs
+      sql: `INSERT INTO pims_drugs
               (category, drug_class, generic_names, target_patients, recommendation,
                applicable_generic_names)
             VALUES (?, ?, ?, ?, ?, ?)`,
@@ -110,7 +110,7 @@ async function main() {
   }
 
   console.log(`✅ ${count}件インポート完了`);
-  const { rows } = await client.execute("SELECT COUNT(*) as cnt FROM pmis_drugs");
+  const { rows } = await client.execute("SELECT COUNT(*) as cnt FROM pims_drugs");
   console.log(`   DB件数: ${rows[0][0]}件`);
   process.exit(0);
 }

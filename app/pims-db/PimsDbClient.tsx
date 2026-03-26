@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { createPmisDrug, updatePmisDrug, deletePmisDrug } from "@/actions/pmisDb";
+import { createPmisDrug, updatePmisDrug, deletePmisDrug } from "@/actions/pimsDb";
 import type { PmisDrug } from "@/lib/schema";
 
 interface Props {
@@ -37,7 +37,7 @@ function parseNames(json: string | null | undefined): string[] {
   try { return JSON.parse(json) as string[]; } catch { return []; }
 }
 
-export default function PmisDbClient({ initialData }: Props) {
+export default function PimsDbClient({ initialData }: Props) {
   const [data, setData] = useState(initialData);
   const [search, setSearch] = useState("");
   const [editTarget, setEditTarget] = useState<PmisDrug | null>(null);
@@ -140,9 +140,9 @@ export default function PmisDbClient({ initialData }: Props) {
     <div className="max-w-5xl mx-auto p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">PMIS 薬剤管理</h1>
+          <h1 className="text-2xl font-bold">PIMS 薬剤管理</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            高齢者に潜在的に不適切な薬剤（PMIS）一覧 — {data.length}件
+            高齢者に潜在的に不適切な薬剤（PIMS）一覧 — {data.length}件
           </p>
         </div>
         <Button onClick={openNew}>＋ 追加</Button>
@@ -211,7 +211,7 @@ export default function PmisDbClient({ initialData }: Props) {
       <Dialog open={isNew || editTarget !== null} onOpenChange={(o) => !o && closeDialog()}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isNew ? "PMIS薬剤を追加" : "PMIS薬剤を編集"}</DialogTitle>
+            <DialogTitle>{isNew ? "PIMS薬剤を追加" : "PIMS薬剤を編集"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -272,7 +272,7 @@ export default function PmisDbClient({ initialData }: Props) {
       <Dialog open={confirmDeleteId !== null} onOpenChange={(o) => !o && setConfirmDeleteId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>削除の確認</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">このPMIS薬剤データを削除しますか？</p>
+          <p className="text-sm text-muted-foreground">このPIMS薬剤データを削除しますか？</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmDeleteId(null)}>キャンセル</Button>
             <Button variant="destructive"

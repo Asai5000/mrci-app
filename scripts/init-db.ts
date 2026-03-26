@@ -74,7 +74,7 @@ async function initDb() {
   `);
 
   await client.execute(`
-    CREATE TABLE IF NOT EXISTS pmis_drugs (
+    CREATE TABLE IF NOT EXISTS pims_drugs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       category TEXT NOT NULL,
       drug_class TEXT NOT NULL,
@@ -84,11 +84,11 @@ async function initDb() {
     )
   `);
 
-  // Migration: add PMIS detail columns if they don't exist
+  // Migration: add PIMS detail columns if they don't exist
   for (const sql of [
-    "ALTER TABLE pmis_drugs ADD COLUMN applicable_generic_names TEXT",
-    "ALTER TABLE pmis_drugs ADD COLUMN drug_price_code TEXT",
-    "ALTER TABLE pmis_drugs ADD COLUMN atc_code TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN applicable_generic_names TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN drug_price_code TEXT",
+    "ALTER TABLE pims_drugs ADD COLUMN atc_code TEXT",
   ]) {
     try { await client.execute(sql); } catch { /* already exists */ }
   }

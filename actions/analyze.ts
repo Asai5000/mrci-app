@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { cases, medications } from "@/lib/schema";
 import { analyzePrescription, analyzePrescriptionImage, generatePharmacistNote, type GeminiAnalysisResult, type GeminiModel, type NoteType, type OptimizationSuggestion, type PharmacistNoteInput, type RenalData } from "@/lib/gemini";
 import { augmentWithRenalDb } from "@/lib/renalDb";
-import { matchPmisDrugs } from "@/lib/pmisDb";
+import { matchPmisDrugs } from "@/lib/pimsDb";
 import { calculateSectionA } from "@/lib/mrci";
 import { v4 as uuidv4 } from "uuid";
 import { eq, and } from "drizzle-orm";
@@ -100,9 +100,9 @@ export async function saveCase(input: {
   const sectionBCInit = medItems.reduce((sum, m) => sum + (m.mrciB ?? 0) + (m.mrciC ?? 0), 0);
   const optimizedTotal = sectionAInit + sectionBCInit;
 
-  // PMIS照合
-  const pmisResult = await matchPmisDrugs(medItems.map((m) => m.drugName));
-  const pmisNames = new Set(Object.keys(pmisResult));
+  // PIMS照合
+  const pimsResult = await matchPmisDrugs(medItems.map((m) => m.drugName));
+  const pimsNames = new Set(Object.keys(pimsResult));
 
   // デフォルトの臨床サマリーを生成（全薬剤継続・薬剤師コメントなし）
   const summary = generateClinicalSummary(
@@ -111,7 +111,7 @@ export async function saveCase(input: {
     optimizedTotal,
     "",
     undefined,
-    pmisNames
+    pimsNames
   );
 
   await db.insert(cases).values({
@@ -247,13 +247,13 @@ export async function approveCase(
     .filter((m) => medicationUpdates[m.id]?.isContinued || m.isAdded === 1)
     .map((m) => m.id);
 
-  // PMIS照合（全薬剤 + 新規追加薬）
+  // PIMS照合（全薬剤 + 新規追加薬）
   const allDrugNames = [
     ...allMeds.map((m) => m.drugName),
     ...newMedications.map((m) => m.drugName).filter(Boolean),
   ];
-  const pmisResult = await matchPmisDrugs(allDrugNames);
-  const pmisNames = new Set(Object.keys(pmisResult));
+  const pimsResult = await matchPmisDrugs(allDrugNames);
+  const pimsNames = new Set(Object.keys(pimsResult));
 
   const summary = generateClinicalSummary(
     allMedsWithNotes,
@@ -261,7 +261,7 @@ export async function approveCase(
     optimizedTotal,
     pharmacistNote,
     newMedications.filter((m) => m.drugName).map((m) => m.drugName),
-    pmisNames
+    pimsNames
   );
 
   await db
@@ -333,30 +333,30 @@ function generateClinicalSummary(
   optimizedTotal: number,
   pharmacistNote: string,
   addedMedNames?: string[],
-  pmisNames?: Set<string>
+  pimsNames?: Set<string>
 ): string {
   const continued = allMeds.filter((m) => approvedIds.includes(m.id ?? ""));
   const discontinued = allMeds.filter((m) => !approvedIds.includes(m.id ?? ""));
   const totalAfter = continued.length + (addedMedNames?.length ?? 0);
 
-  // PMIS該当薬（持参薬の中で）
-  const pmisInAdmission = allMeds.filter((m) => pmisNames?.has(m.drugName));
+  // PIMS該当薬（持参薬の中で）
+  const pimsInAdmission = allMeds.filter((m) => pimsNames?.has(m.drugName));
 
   const lines = [
     "【持参薬鑑別結果】",
     `持参薬: ${allMeds.length}剤 → 最適化後: ${totalAfter}剤 (MRCI: ${optimizedTotal.toFixed(1)})`,
   ];
 
-  if (pmisInAdmission.length > 0) {
-    lines.push(`※ PMIS該当薬: ${pmisInAdmission.map((m) => m.drugName).join("、")}`);
+  if (pimsInAdmission.length > 0) {
+    lines.push(`※ PIMS該当薬: ${pimsInAdmission.map((m) => m.drugName).join("、")}`);
   }
 
   lines.push("", "【継続薬】");
   lines.push(...continued.map((m) => {
     const note = m.optimizationNote;
     const hasChange = note && note !== "中止" && !note.startsWith("新規追加");
-    const pmisMark = pmisNames?.has(m.drugName) ? " ⚠PMIS" : "";
-    return `・${m.drugName} ${m.dose ?? ""} ${m.frequency ?? ""}${pmisMark}${hasChange ? ` [${note}]` : ""}`;
+    const pimsMark = pimsNames?.has(m.drugName) ? " ⚠PIMS" : "";
+    return `・${m.drugName} ${m.dose ?? ""} ${m.frequency ?? ""}${pimsMark}${hasChange ? ` [${note}]` : ""}`;
   }));
 
   if (addedMedNames && addedMedNames.length > 0) {
@@ -368,8 +368,8 @@ function generateClinicalSummary(
     lines.push("", "【中止・変更検討薬】");
     lines.push(
       ...discontinued.map((m) => {
-        const pmisMark = pmisNames?.has(m.drugName) ? " ⚠PMIS" : "";
-        return `・${m.drugName}${pmisMark} ${m.optimizationNote ? `→ ${m.optimizationNote}` : "(中止)"}`;
+        const pimsMark = pimsNames?.has(m.drugName) ? " ⚠PIMS" : "";
+        return `・${m.drugName}${pimsMark} ${m.optimizationNote ? `→ ${m.optimizationNote}` : "(中止)"}`;
       })
     );
   }

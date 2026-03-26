@@ -40,10 +40,10 @@ export default function RootLayout({
                   腎機能DB
                 </a>
                 <a
-                  href="/pmis-db"
+                  href="/pims-db"
                   className="px-2 sm:px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
                 >
-                  PMIS
+                  PIMS
                 </a>
                 <a
                   href="/analyze"

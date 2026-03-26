@@ -24,7 +24,7 @@ import type { GeminiAnalysisResult, GeminiModel, NoteType, OptimizationSuggestio
 interface Props {
   caseData: Case & { medications: Medication[] };
   geminiResult: GeminiAnalysisResult | null;
-  pmisMatches: Record<string, PmisDrug[]>;
+  pimsMatches: Record<string, PmisDrug[]>;
 }
 
 // ── 変更操作種別 ──────────────────────────────────────────────
@@ -162,11 +162,11 @@ const QUICK_PHRASES: Record<NoteType, string[]> = {
   nurse:            ["服薬指導実施", "理解良好", "要フォロー", "家族への説明必要", "アドヒアランス良好"],
   inquiry:          ["照会内容：", "根拠：", "対応結果：", "医師回答：", "変更指示あり"],
   guidance_soap:    ["S：", "O：", "A：", "P：", "確認要", "次回フォロー予定"],
-  discharge_summary: ["PMIS該当あり", "ポリファーマシー改善", "用量調整済", "かかりつけ連携要", "退院後経過観察"],
+  discharge_summary: ["PIMS該当あり", "ポリファーマシー改善", "用量調整済", "かかりつけ連携要", "退院後経過観察"],
 };
 
 // ── コンポーネント ────────────────────────────────────────────
-export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }: Props) {
+export default function CaseDetailClient({ caseData, geminiResult, pimsMatches }: Props) {
   const router = useRouter();
 
   // 元の薬剤 / 追加薬剤を分離
@@ -414,8 +414,8 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
         // 入院前処方（持参薬）
         lines.push("【持参薬一覧（入院前）】");
         for (const med of originalMeds) {
-          const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
-          lines.push(`・${med.drugName}${med.brandName ? `（${med.brandName}）` : ""}${pmisFlag}`);
+          const pimsFlag = pimsMatches[med.drugName] ? " ⚠PIMS" : "";
+          lines.push(`・${med.drugName}${med.brandName ? `（${med.brandName}）` : ""}${pimsFlag}`);
         }
         lines.push(`持参薬剤数: ${originalMeds.length}剤、入院前MRCI: ${originalMrci.toFixed(1)}`);
         lines.push("");
@@ -437,8 +437,8 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
             if (change.overrideDose) detail += ` → 用量: ${med.dose ?? ""}→${change.overrideDose}`;
             if (change.overrideForm) detail += ` → 剤形: ${change.overrideForm}`;
             if (change.overrideFreq) detail += ` → 用法: ${change.overrideFreq}`;
-            const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
-            lines.push(`・${med.drugName}${pmisFlag}: 【${label}】${detail}`);
+            const pimsFlag = pimsMatches[med.drugName] ? " ⚠PIMS" : "";
+            lines.push(`・${med.drugName}${pimsFlag}: 【${label}】${detail}`);
             if (note) lines.push(`  理由: ${note}`);
           }
         }
@@ -459,8 +459,8 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
         const continuedMeds = originalMeds.filter((m) => (medChanges[m.id]?.changeType ?? "continued") !== "discontinued");
         lines.push("【退院時処方（最適化後）】");
         for (const med of continuedMeds) {
-          const pmisFlag = pmisMatches[med.drugName] ? " ⚠PMIS" : "";
-          lines.push(`・${med.drugName}${pmisFlag}`);
+          const pimsFlag = pimsMatches[med.drugName] ? " ⚠PIMS" : "";
+          lines.push(`・${med.drugName}${pimsFlag}`);
         }
         for (const med of localAddedMeds.filter((m) => !pendingDeleteMedIds.has(m.id))) {
           lines.push(`・${med.drugName}（追加）`);
@@ -807,12 +807,12 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
                             <span className="text-gray-400 text-xs">({med.brandName})</span>
                           )}
                           {renderChangeBadge(med, change)}
-                          {pmisMatches[med.drugName] && (
+                          {pimsMatches[med.drugName] && (
                             <button
-                              onClick={() => setSelectedPmisDrug({ drugName: med.drugName, entries: pmisMatches[med.drugName] })}
+                              onClick={() => setSelectedPmisDrug({ drugName: med.drugName, entries: pimsMatches[med.drugName] })}
                               className="inline-flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded border bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100 transition-colors font-medium w-fit"
                             >
-                              ⚠ PMIS
+                              ⚠ PIMS
                             </button>
                           )}
                         </div>
@@ -1462,7 +1462,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
         </div>
       )}
 
-      {/* PMIS詳細モーダル */}
+      {/* PIMS詳細モーダル */}
       {selectedPmisDrug && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
           onClick={() => setSelectedPmisDrug(null)}>
@@ -1471,7 +1471,7 @@ export default function CaseDetailClient({ caseData, geminiResult, pmisMatches }
             <div className="flex items-start gap-2">
               <span className="text-xl">⚠️</span>
               <div>
-                <h2 className="text-lg font-bold text-orange-800">PMIS 該当薬剤</h2>
+                <h2 className="text-lg font-bold text-orange-800">PIMS 該当薬剤</h2>
                 <p className="text-sm text-gray-500">{selectedPmisDrug.drugName}</p>
               </div>
             </div>

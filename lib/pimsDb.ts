@@ -1,9 +1,9 @@
 import { db } from "./db";
-import { pmisDrugs } from "./schema";
+import { pimsDrugs } from "./schema";
 import type { PmisDrug } from "./schema";
 
 export async function getAllPmisDrugs(): Promise<PmisDrug[]> {
-  return db.select().from(pmisDrugs).orderBy(pmisDrugs.id);
+  return db.select().from(pimsDrugs).orderBy(pimsDrugs.id);
 }
 
 function parseJson(json: string | null | undefined): string[] {
@@ -12,7 +12,7 @@ function parseJson(json: string | null | undefined): string[] {
 }
 
 /**
- * 薬剤名リストをPMISテーブルと照合。
+ * 薬剤名リストをPIMSテーブルと照合。
  * 優先順: applicableGenericNames（詳細一般名）> genericNames（代表一般名）
  * 戻り値: { [drugName]: PmisDrug[] }
  */
@@ -21,7 +21,7 @@ export async function matchPmisDrugs(
 ): Promise<Record<string, PmisDrug[]>> {
   if (!drugNames.length) return {};
 
-  const all = await db.select().from(pmisDrugs).orderBy(pmisDrugs.id);
+  const all = await db.select().from(pimsDrugs).orderBy(pimsDrugs.id);
   const result: Record<string, PmisDrug[]> = {};
 
   for (const drugName of drugNames) {

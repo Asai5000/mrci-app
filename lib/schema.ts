@@ -87,7 +87,7 @@ export const renalDosingGuidelines = sqliteTable("renal_dosing_guidelines", {
   doseHdPd: text("dose_hd_pd"),     // HD/PD
 });
 
-export const pmisDrugs = sqliteTable("pmis_drugs", {
+export const pimsDrugs = sqliteTable("pims_drugs", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   category: text("category").notNull(),                     // 分類
   drugClass: text("drug_class").notNull(),                  // 薬物クラスまたは一般名
@@ -102,5 +102,5 @@ export type NewCase = typeof cases.$inferInsert;
 export type Medication = typeof medications.$inferSelect;
 export type NewMedication = typeof medications.$inferInsert;
 export type RenalDosingGuideline = typeof renalDosingGuidelines.$inferSelect;
-export type PmisDrug = typeof pmisDrugs.$inferSelect;
-export type NewPmisDrug = typeof pmisDrugs.$inferInsert;
+export type PmisDrug = typeof pimsDrugs.$inferSelect;
+export type NewPmisDrug = typeof pimsDrugs.$inferInsert;
